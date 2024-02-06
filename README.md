@@ -2,6 +2,16 @@
 
 _inspired by [MotionBERT](https://arxiv.org/pdf/2210.06551.pdf)_
 
+## Table of Contents
+
+1. [Pretrain Model](#1-pretrain-model)
+   - [Data Set: Fit3D](#data-set-fit3d)
+   - [Architecture](#architecture)
+2. [3D Pose-Estimation](#2-3d-pose-estimation)
+3. [Pose Classification](#3-pose-classification)
+4. [Form Analysis](#4-form-analysis)
+5. [Rep Counter](#5-rep-counter)
+
 ## 1. Pretrain Model
 
 ![pretrain](./assets/pretrain.png)
