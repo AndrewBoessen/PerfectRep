@@ -53,15 +53,15 @@ _inspired by [MotionBERT](https://arxiv.org/pdf/2210.06551.pdf)_
 
     - Spatial MHSA (S-MHSA) aims at modeling the relationship among the joints within the same time step. It is defined as
 
-      $\text{S-MHSA}(Q_S, K_S, V_S) = [\text{head}_1; \ldots; \text{head}_h]W_P S$,
+      $\text{S-MHSA}(Q_S, K_S, V_S) = [\text{head}_1; \ldots; \text{head}_h]W_S^P$,
 
-      $\text{head}_i = \text{softmax}\left(\frac{Q_i^S (K_i^S)^\prime}{\sqrt{d_K}}\right)V_i^S$
+      $\text{head}_i = \text{softmax}\left(\frac{Q_S^i (K_S^i)^\prime}{\sqrt{d_K}}\right)V_S^i$
 
-      where $W_P S$ is a projection parameter matrix, $h$ is the number of the heads, $i \in 1, . . . , h$, and $′$ denotes matrix transpose.
+      where $W_S^P$ is a projection parameter matrix, $h$ is the number of the heads, $i \in 1, . . . , h$, and $′$ denotes matrix transpose.
 
       We utilize self-attention to get the query $Q^S$, key $K^S$, and value $V^S$ from input per-frame spatial feature $F_S \in \mathbb{R}^{J \times Ce}$ for each head $_i$
 
-      $Q_i^S = F_{S}W_{S}^{(Q,i)}, \quad K_S^i = F_{S}W_{S}^{(K,i)}, \quad V_S^i = F_{S}W_{S}^{(V,i)}$,
+      $Q_S^i = F_{S}W_{S}^{(Q,i)}, \quad K_S^i = F_{S}W_{S}^{(K,i)}, \quad V_S^i = F_{S}W_{S}^{(V,i)}$,
 
       where $W_S^{(Q,i)}$, $W_S^{(K,i)}$, $W_S^{(V,i)}$ are projection matrices, and $d_K$ is the feature dimension of $K_S$.
 
@@ -73,6 +73,12 @@ _inspired by [MotionBERT](https://arxiv.org/pdf/2210.06551.pdf)_
       modeling the relationship across the time steps for a body
       joint. Its computation process is similar with S-MHSA except that the MHSA is applied to the per-joint temporal
       feature $F_T \in \mathbb{R}^{T \times C_e}$ and parallelized over the spatial dimension
+
+      $\text{T-MHSA}(Q_T, K_T, V_T) = [\text{head}_1; \ldots; \text{head}_h]W_T^P$,
+
+      $\text{head}_i = \text{softmax}\left(\frac{Q_T^i (K_T^i)^\prime}{\sqrt{d_K}}\right)V_T^i$
+
+      where $i \in 1,...,h, Q_T, K_T, V_T$ are computed similar with S-MHSA
 
 ## 2. 3D Pose-Estimation
 
