@@ -14,6 +14,8 @@ _inspired by [MotionBERT](https://arxiv.org/pdf/2210.06551.pdf)_
    - [Data Collection](#data-collection)
    - [Dataset Info](#dataset-info)
 
+[Reference Articles](#reference-articles)
+
 ## 1. Pretrain Model
 
 ![pretrain](./assets/pretrain.png)
@@ -134,3 +136,10 @@ _inspired by [MotionBERT](https://arxiv.org/pdf/2210.06551.pdf)_
 | s02     | band_pull_apart, dumbbell_high_pulls, dumbbell_reverse_lunge, pushup, drag_curl, warmup_13, warmup_19, side_lateral_raise, deadlift, warmup_14, warmup_12, warmup_6, dumbbell_hammer_curls, w_raise, standing_ab_twists, warmup_11, warmup_1, barbell_dead_row, one_arm_row, squat, clean_and_press, warmup_2, diamond_pushup, dumbbell_scaptions, barbell_shrug, dumbbell_biceps_curls, warmup_3, dumbbell_overhead_shoulder_press, burpees, overhead_extension_thruster, warmup_16, warmup_18, man_maker, warmup_5, warmup_8, warmup_10, dumbbell_curl_trifecta, barbell_row, overhead_trap_raises, neutral_overhead_shoulder_press, walk_the_box, warmup_4, warmup_7, mule_kick, warmup_17, warmup_15, warmup_9  | Test     |
 | s12     | band_pull_apart, dumbbell_high_pulls, dumbbell_reverse_lunge, pushup, drag_curl, warmup_13, warmup_19, side_lateral_raise, deadlift, warmup_14, warmup_12, warmup_6, dumbbell_hammer_curls, w_raise, standing_ab_twists, warmup_11, warmup_1, barbell_dead_row, one_arm_row, squat, clean_and_press, warmup_2, diamond_pushup, dumbbell_scaptions, barbell_shrug, dumbbell_biceps_curls, warmup_3, dumbbell_overhead_shoulder_press, burpees, overhead_extension_thruster, warmup_16, warmup_18, man_maker, warmup_5, warmup_8, warmup_10, dumbbell_curl_trifecta, barbell_row, overhead_trap_raises, neutral_overhead_shoulder_press, walk_the_box, warmup_4, warmup_7, mule_kick, warmup_17, warmup_15, warmup_9  | Test     |
 | s13     | band_pull_apart, dumbbell_high_pulls, dumbbell_reverse_lunge, pushup, drag_curl, warmup_13, warmup_19, side_lateral_raise, deadlift, warmup_14, warmup_12, warmup_6, dumbbell_hammer_curls, w_raise, standing_ab_twists, warmup_11, warmup_1, barbell_dead_row, one_arm_row, squat, clean_and_press, warmup_2, diamond_pushup, dumbbell_scaptions, barbell_shrug, dumbbell_biceps_curls, warmup_3, dumbbell_overhead_shoulder_press, burpees, overhead_extension_thruster, warmup_16, warmup_18, man_maker, warmup_5, warmup_8, warmup_10, dumbbell_curl_trifecta, barbell_row, overhead_trap_raises, neutral_overhead_shoulder_press, walk_the_box, warmup_4, warmup_7, mule_kick, warmup_17, warmup_15, warmup_9  | Test     |
+
+### **Reference Articles**
+
+1. [What is a Transformer?](https://medium.com/inside-machine-learning/what-is-a-transformer-d07dd1fbec04)
+2. [What is BERT? How it is trained ? A High Level Overview](https://medium.com/@Suraj_Yadav/what-is-bert-how-it-is-trained-a-high-level-overview-1207a910aaed)
+3. [The Perceptron Algorithm: How it Works and Why it Works](https://medium.com/geekculture/the-perceptron-algorithm-how-it-works-and-why-it-works-3668a80f8797)
+4. [Understanding Backpropagation Algorithm](https://towardsdatascience.com/understanding-backpropagation-algorithm-7bb3aa2f95fd)
