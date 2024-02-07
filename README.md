@@ -95,7 +95,7 @@ _inspired by [MotionBERT](https://arxiv.org/pdf/2210.06551.pdf)_
 
   ![subjects exercising](./assets/fit3d_single_view.gif)
 
-  - Traning Set: 8 Subjects (all tranees)
+  - Traning Set: 8 Subjects (all trainees)
   - Testing Set: 3 Subjects (1 trainer, 2 trainees)
 
 - **47 Exercises**
