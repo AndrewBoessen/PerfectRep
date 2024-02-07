@@ -54,7 +54,8 @@ _inspired by [MotionBERT](https://arxiv.org/pdf/2210.06551.pdf)_
     - Spatial MHSA (S-MHSA) aims at modeling the relationship among the joints within the same time step. It is defined as
 
       $\text{S-MHSA}(Q_S, K_S, V_S) = [\text{head}_1; \ldots; \text{head}_h]W_P S$,
-      $\text{head}_i = \text{softmax}\left(\frac{Q_i S(K_i S)^\prime}{\sqrt{d_K}}\right)V_i S$
+
+      $\text{head}_i = \text{softmax}\left(\frac{Q_i^S (K_i^S)^\prime}{\sqrt{d_K}}\right)V_i^S$
 
       where $W_P S$ is a projection parameter matrix, $h$ is the number of the heads, $i \in 1, . . . , h$, and $′$ denotes matrix transpose.
 
