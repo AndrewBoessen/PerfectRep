@@ -5,7 +5,7 @@ _inspired by [MotionBERT](https://arxiv.org/pdf/2210.06551.pdf)_
 ## Table of Contents
 
 1. [Pretrain Model](#1-pretrain-model)
-   - [Architecture](#architecture)
+   - [Architecture](#--architecture)
 2. [3D Pose-Estimation](#2-3d-pose-estimation)
 3. [Pose Classification](#3-pose-classification)
 4. [Form Analysis](#4-form-analysis)
