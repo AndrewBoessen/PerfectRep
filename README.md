@@ -83,18 +83,18 @@ _inspired by [MotionBERT](https://arxiv.org/pdf/2210.06551.pdf)_
 
       where $i \in 1,...,h, Q_T, K_T, V_T$ are computed similar with S-MHSA
 
-  ### - Training:
+### - Training:
 
-  For AMASS, we first render the parameterized human model SMPL+H, then extract 3D keypoints with a pre-defined regression matrix. We extract 3D keypoints from Fit3D by camera projection. We sample motion clips with length $T = 243$ for
-  3D mocap data. For 2D data, we utilize the provided annotations of PoseTrack. We further include 2D motion from
-  an unannotated video dataset InstaVariety extracted by
-  OpenPose. Since the valid sequence lengths for in-thewild videos are much shorter, we use $T = 30$ (PoseTrack)
-  and $T = 81$ (InstaVariety). We convert keypoints of 2D
-  datasets (COCO and OpenPose format) to Fit3D using permutation and interpolation following previous works.
-  We set the input channels $C_{in} = 3 (x, y$ coordinates and
-  confidence). Random horizontal flipping is applied as data augmentation. The whole network
-  is trained for 90 epochs with learning rate 0.0005 and batch
-  size 64 using an Adam optimizer.
+For AMASS, we first render the parameterized human model SMPL+H, then extract 3D keypoints with a pre-defined regression matrix. We extract 3D keypoints from Fit3D by camera projection. We sample motion clips with length $T = 243$ for
+3D mocap data. For 2D data, we utilize the provided annotations of PoseTrack. We further include 2D motion from
+an unannotated video dataset InstaVariety extracted by
+OpenPose. Since the valid sequence lengths for in-thewild videos are much shorter, we use $T = 30$ (PoseTrack)
+and $T = 81$ (InstaVariety). We convert keypoints of 2D
+datasets (COCO and OpenPose format) to Fit3D using permutation and interpolation following previous works.
+We set the input channels $C_{in} = 3 (x, y$ coordinates and
+confidence). Random horizontal flipping is applied as data augmentation. The whole network
+is trained for 90 epochs with learning rate 0.0005 and batch
+size 64 using an Adam optimizer.
 
 ## 2. 3D Pose-Estimation
 
