@@ -6,6 +6,7 @@ _inspired by [MotionBERT](https://arxiv.org/pdf/2210.06551.pdf)_
 
 1. [Pretrain Model](#1-pretrain-model)
    - [Architecture](#--architecture)
+   - [Implementation](#--implementation)
    - [Training](#--training)
 2. [3D Pose-Estimation](#2-3d-pose-estimation)
 3. [Pose Classification](#3-pose-classification)
@@ -83,6 +84,17 @@ _inspired by [MotionBERT](https://arxiv.org/pdf/2210.06551.pdf)_
 
       where $i \in 1,...,h, Q_T, K_T, V_T$ are computed similar with S-MHSA
 
+### - Implementation:
+
+We implement the proposed motion encoder DSTformer
+with depth $N = 5$, number of heads $h = 8$, feature size
+$C_f = 512$, embedding size $C_e = 512$. For pretraining, we
+use sequence length $T = 243$. The pretrained model could
+handle different input lengths thanks to the Transformerbased backbone. During finetuning, we set the backbone
+learning rate to be $0.1 ×$ of the new layer learning rate. We
+introduce the experiment datasets in the following sections
+respectively
+
 ### - Training:
 
 For AMASS, we first render the parameterized human model SMPL+H, then extract 3D keypoints with a pre-defined regression matrix. We extract 3D keypoints from Fit3D by camera projection. We sample motion clips with length $T = 243$ for
@@ -98,7 +110,17 @@ size 64 using an Adam optimizer.
 
 ## 2. 3D Pose-Estimation
 
+### - Finetuning:
+
+### - Training:
+
 ## 3. Pose Classification
+
+### - Data Pipeline:
+
+### - Finetuning:
+
+### - Training:
 
 ## 4. Form Analysis
 
