@@ -1,4 +1,4 @@
-# PerfectRep - 3D Pose Analysis for Powerlifters 🏋🏻🦾
+# PerfectRep - 3D Pose Analysis for Powerlifters 🏋️🦾
 
 ![PerfectRep](./assets/extended_banner.png)
 
