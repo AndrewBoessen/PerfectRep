@@ -10,7 +10,6 @@
 
 - **Input** _2D skeleton sequences_
 
-  - For in-the-wild inference, use [Alpha Pose](https://github.com/MVIG-SJTU/AlphaPose#quick-start) to extract 2D keypoints from video
   - Represented as a tensor. Each set of keypoints $x$ in the series is a vector.
 
     $x \in \mathbb{R}^{(T \times J \times C_{\text{in}})}$
@@ -77,12 +76,12 @@ respectively
 
 ### - Training:
 
-We extract 3D keypoints from Fit3D by camera projection. We sample motion clips with length $T = 243$ for
+We extract 3D Human3.6m keypoints from Fit3D by camera projection. We sample motion clips with length $T = 243$ for
 3D mocap data. For 2D data, we utilize the provided annotations of PoseTrack. We further include 2D motion from
 an unannotated video dataset InstaVariety extracted by
 OpenPose. Since the valid sequence lengths for in-thewild videos are much shorter, we use $T = 30$ (PoseTrack)
 and $T = 81$ (InstaVariety). We convert keypoints of 2D
-datasets (COCO and OpenPose format) to Fit3D using permutation and interpolation following previous works.
+datasets (COCO and OpenPose format) to Human3.6m joints using permutation and interpolation following previous works.
 We set the input channels $C_{in} = 3 (x, y$ coordinates and
 confidence). Random horizontal flipping is applied as data augmentation. The whole network
 is trained for 90 epochs with learning rate 0.0005 and batch
