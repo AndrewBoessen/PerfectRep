@@ -1,6 +1,6 @@
 # PerfectRep - 3D Pose Analysis for Powerlifters 🏋🏻🦾
 
-![PerfectRep](./assets/banner.png)
+![PerfectRep](./assets/extended_banner.png)
 
 PerfectRep is a 3D pose estimation model tailored specifically for powerlifting analysis. It allows for precise tracking and analysis of lifter's movements to ensure perfect form and technique.
 
