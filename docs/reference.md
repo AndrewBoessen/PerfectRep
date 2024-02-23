@@ -1,4 +1,4 @@
-### **Reference Articles**
+# Reference Articles
 
 1. [What is a Transformer?](https://medium.com/inside-machine-learning/what-is-a-transformer-d07dd1fbec04)
 2. [What is BERT? How it is trained ? A High Level Overview](https://medium.com/@Suraj_Yadav/what-is-bert-how-it-is-trained-a-high-level-overview-1207a910aaed)
