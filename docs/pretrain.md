@@ -78,28 +78,28 @@ respectively
 
 #### Data Processing / Augmentation:
 
-We extract 3D Human3.6m keypoints from Fit3D by camera projection. We sample motion clips with length $T = 243$ for
-3D mocap data. We set the input channels $C_{in} = 3 (x, y$ coordinates and
-confidence). Random horizontal flipping is applied as data augmentation. The whole network
-is trained for 90 epochs with learning rate 0.0005 and batch
-size 64 using an Adam optimizer. We first
+We first
 extract the 2D skeleton sequences $x$ by projecting the 3D
 motion orthographically. Then, we corrupt $x$ by randomly
 masking and adding noise to produce the corrupted 2D skeleton sequences, which also resemble the 2D detection results
 as it contains occlusions, detection failures, and errors. Both
 joint-level and frame-level masks are applied with certain
-probabilities
+probabilities We sample motion clips with length $T = 243$ for
+3D mocap data. We set the input channels $C_{in} = 3 (x, y$ coordinates and
+confidence). Random horizontal flipping is applied as data augmentation. The whole network
+is trained for 90 epochs with learning rate 0.0005 and batch
+size 64 using an Adam optimizer.
 
 #### Loss Function:
 
 We use the aforementioned motion encoder to get motion representation $\mathbf{E}$ and reconstruct 3D motion $\mathbf{\hat{X}}$. We then compute the joint loss $\mathcal{L}_\text{3D}$ between $\mathbf{\hat{X}}$ and GT 3D motion $\mathbf{X}$. We also add the velocity loss $\mathcal{L}_\text{O}$ The 3D reconstruction losses are thus given by
 
-$$
+$
 \begin{equation}
     \mathcal{L}_\text{3D} = \sum\limits_{t=1}^{T} \sum\limits_{j=1}^{J} \parallel \mathbf{\hat{X}}_{t,j} - \mathbf{X}_{t,j} \parallel_2, \quad
     \mathcal{L}_\text{O} = \sum\limits_{t=2}^{T} \sum\limits_{j=1}^{J} \parallel \mathbf{\hat{O}}_{t,j} - \mathbf{O}_{t,j} \parallel_2,
 \end{equation}
-$$
+$
 
 where $\mathbf{\hat{O}}_t=\mathbf{\hat{{X}}}_t - \mathbf{\hat{X}}*{t-1}$, $\mathbf{O}_t=\mathbf{X}_t - \mathbf{X}_{t-1}$.
 
