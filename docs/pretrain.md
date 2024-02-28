@@ -92,7 +92,7 @@ size 64 using an Adam optimizer.
 
 #### Loss Function:
 
-We use the aforementioned motion encoder to get motion representation $\mathbf{E}$ and reconstruct 3D motion $\mathbf{\hat{X}}$. We then compute the joint loss $\mathcal{L}_{\text{3D}}$ between $\mathbf{\hat{X}}$ and GT 3D motion $\mathbf{X}$. We also add the velocity loss $\mathcal{L}_{\text{O}}$. The 3D reconstruction losses are thus given by
+We use the aforementioned motion encoder to get motion representation $\mathbf{E}$ and reconstruct 3D motion $\mathbf{\hat{X}}$. We then compute the joint loss $\mathcal{L}_\text{3D}$ between $\mathbf{\hat{X}}$ and GT 3D motion $\mathbf{X}$. We also add the velocity loss $\mathcal{L}_\text{O}$. The 3D reconstruction losses are thus given by
 
 $\mathcal{L}_{\text{3D}} = \sum\limits_{t=1}^{T} \sum\limits_{j=1}^{J} \| \mathbf{\hat{X}}_{t,j} - \mathbf{X}_{t,j} \|_{2}, \quad
 \mathcal{L}_{\text{O}} = \sum\limits_{t=2}^{T} \sum\limits_{j=1}^{J} \| \mathbf{\hat{O}}_{t,j} - \mathbf{O}_{t,j} \|_{2}$,
