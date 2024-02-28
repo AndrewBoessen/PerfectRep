@@ -32,50 +32,6 @@ _We use the Human3.6m 17 keypoints_
 | 15           | Right Elbow    |
 | 16           | Right Wrist    |
 
-### Limbs:
-
-| Limb ID | Joint 1        | Joint 2        |
-| ------- | -------------- | -------------- |
-| 0       | Root           | Right Hip      |
-| 1       | Right Hip      | Right Knee     |
-| 2       | Right Knee     | Right Ankle    |
-| 3       | Root           | Left Hip       |
-| 4       | Left Hip       | Left Knee      |
-| 5       | Left Knee      | Left Ankle     |
-| 6       | Root           | Belly          |
-| 7       | Belly          | Neck           |
-| 8       | Neck           | Nose           |
-| 9       | Nose           | Head           |
-| 10      | Neck           | Left Shoulder  |
-| 11      | Left Shoulder  | Left Elbow     |
-| 12      | Left Elbow     | Left Wrist     |
-| 13      | Neck           | Right Shoulder |
-| 14      | Right Shoulder | Right Elbow    |
-| 15      | Right Elbow    | Right Wrist    |
-
-### Angles:
-
-| Angle ID | Joint 1        | Joint 2        |
-| -------- | -------------- | -------------- |
-| 0        | Root           | Right Ankle    |
-| 1        | Root           | Belly          |
-| 2        | Right Ankle    | Belly          |
-| 3        | Root           | Right Hip      |
-| 4        | Right Hip      | Right Knee     |
-| 5        | Right Ankle    | Left Hip       |
-| 6        | Left Hip       | Left Knee      |
-| 7        | Belly          | Neck           |
-| 8        | Neck           | Head           |
-| 9        | Neck           | Right Shoulder |
-| 10       | Head           | Right Shoulder |
-| 11       | Neck           | Nose           |
-| 12       | Nose           | Neck           |
-| 13       | Belly          | Neck           |
-| 14       | Neck           | Left Shoulder  |
-| 15       | Left Shoulder  | Left Elbow     |
-| 16       | Right Shoulder | Right Elbow    |
-| 17       | Right Elbow    | Right Wrist    |
-
 ## Calculations:
 
 | Metric   | Formula                                                                                                                                                       |

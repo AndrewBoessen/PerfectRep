@@ -68,6 +68,8 @@ PerfectRep is a 3D pose estimation model tailored specifically for powerlifting 
 ## Documentation
 
 - [Pretrain Model](./docs/pretrain.md)
+- [3D Pose Estimation](./docs/3D-pose.md)
+- [Form Analysis](./docs/form-analysis.md)
 - [Data Set](./docs/dataset.md)
 - [References](./docs/reference.md)
 
