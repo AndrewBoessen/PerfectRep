@@ -1,9 +1,6 @@
 import numpy as np
 import os, sys
 import pickle
-import yaml
-from easydict import EasyDict as edict
-from typing import Any, IO
 
 ROOT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')
 
