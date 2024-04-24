@@ -138,7 +138,7 @@ def split_clips(vid_list, n_frames, data_stride):
         if i == len(vid_list):
             break
 
-        if vid_list[i] != vid_list[i - 1]:
+        if vid_list[i] != vid_list[i - 1]: # Check if current frame is from a different clip
             if not (vid_list[i - 1] in saved):  # If the previous frame hasn't been saved yet
                 resampled = resample(i - st, n_frames) + st  # Resample the clip
                 result.append(resampled)  # Add the resampled clip to the result list
