@@ -64,9 +64,7 @@ def split_data_by_intervals(data, intervals):
     train_data = np.array([x for x in data if x not in test_data])
     return train_data, test_data
 
-
-
-def convert_data(data_path = 'data/fit3d_train/train', out_dir = 'data/motion_3d', test_subjects = ['s03', 's011']):
+def convert_data(data_path = 'data/fit3d_train/train', test_subjects = ['s03', 's011']):
     """
     Convert the dataset download into a dictionary and numpy arrays
 
@@ -138,9 +136,30 @@ def convert_data(data_path = 'data/fit3d_train/train', out_dir = 'data/motion_3d
     joints_2d = project_to_2d(joints_3d, camera_params)
     source = np.array(source)
 
-    joints_3d_train, joints_3d_test = split_data_by_intervals(joints_3d, test_intervals)
-    joints_2d_train, joints_2d_test = split_data_by_intervals(joints_2d, test_intervals)
-    soure_train, source_test = split_data_by_intervals(source, test_intervals)
+    return split_data_by_intervals(joints_3d, test_intervals), split_data_by_intervals(joints_2d, test_intervals), split_data_by_intervals(source, test_intervals)
 
-    
-    return
+def compress_data(out_dir = 'data/motion_3d'):
+    joints_3d, joints_2d, source = convert_data()
+
+    # Data decompossition
+    joints_3d_train, joints_3d_test = joints_3d
+    joints_2d_train, joints_2d_test = joints_2d
+    source_train, source_test = source
+
+    # Create dictionary to compress
+    data = {}
+    data['train'] = {}
+    data['test'] = {}
+
+    data['train']['joints_2d'] = joints_2d_train
+    data['test']['joints_2d'] = joints_2d_test
+    data['train']['joints_2d'] = joints_2d_train
+    data['test']['joints_2d'] = joints_2d_test
+    data['train']['source'] = source_train
+    data['test']['soruce'] = source_test
+
+    # Compress data
+    with open(os.path.join(out_dir, 'fit3d_processed_data.pkl'), 'rw'):
+        pickle.dump(data, f)
+
+compress_data()
