@@ -131,4 +131,8 @@ def preprocess_data(data_root = 'data', dataset_name = 'fit3d_train'):
 
     assert joints_3d_labels.shape[-1] == joints_2d_input.shape[-1], "Inputs and Labels are not the same size"
 
+    print("Successfully Processed Data\nInputs %s\nLabels %s\nSource %s" % (joints_2d_input.shape, joints_3d_labels.shape, source.shape))
+
+preprocess_data()
+
                 
