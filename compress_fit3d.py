@@ -94,14 +94,14 @@ def read_data(data_root, dataset_name, subset, subj_name, action_name, camera_na
     return j3ds, cam_params, annotations
 
 def preprocess_data(data_root = 'data', dataset_name = 'fit3d_train'):
-    data_info_path = '%s/fit3d_info.json' %(data_root)
+    data_info_path = '%s/%s/fit3d_info.json' % (data_root, dataset_name)
 
     with open(data_info_path) as f: # Load dataset info about subjects and actions
         info = json.load(f)
     
-    camera_names = info['all_camera_name']
+    camera_names = info['all_camera_names']
     train_subj = info['train_subj_names']
-    actions = info['subject_to_act']
+    actions = info['subj_to_act']
 
     joints_3d_labels = [] # Array of np arrays for 3d joints
     joints_2d_input = [] # Array of np arrays for 2d joint inputs
@@ -114,9 +114,9 @@ def preprocess_data(data_root = 'data', dataset_name = 'fit3d_train'):
             for camera in camera_names:
                 joints_3d, cam_params, annotations = read_data(data_root, dataset_name, 'train', subj, action, camera)
                 
-                joints_3d = cam_perspective_3d(cam_params)
-                intrinsic_params = np.concatenate(list(cam_params['intrinsics_w_distortion'].values())) # Extract params with distortion from dict
-                joints_2d = project_to_2d(joints_3d, intrinsic_params) # Get 2D projections from 3D joints
+                joints_3d = cam_perspective_3d(joints_3d, cam_params)
+                intrinsic_params = np.hstack(list(cam_params['intrinsics_w_distortion'].values())) # Extract params with distortion from dict
+                joints_2d = project_to_2d(joints_3d, np.tile(intrinsic_params, (joints_3d.shape[0],1))) # Get 2D projections from 3D joints
                 action_annotations = annotations[action] # Repetition annotations for current action and subject
                 source = '%s_%s_%s' % (subj, action, camera) # Label for curr batch of frames
 
@@ -125,8 +125,8 @@ def preprocess_data(data_root = 'data', dataset_name = 'fit3d_train'):
                 rep_annotations[source] = action_annotations
                 source.extend(source * joints_3d.shape[0])
     
-    joints_3d_labels = np.concatenate(joints_3d_labels) # Unify all into one ndarray
-    joints_2d_input = np.concatenate(joints_2d_input) # Unify all into one ndarray
+    joints_3d_labels = np.hstack(joints_3d_labels) # Unify all into one ndarray
+    joints_2d_input = np.hstack(joints_2d_input) # Unify all into one ndarray
     source_labels = np.array(source_labels)
 
     assert joints_3d_labels.shape[-1] == joints_2d_input.shape[-1], "Inputs and Labels are not the same size"
