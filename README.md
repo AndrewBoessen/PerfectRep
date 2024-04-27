@@ -8,7 +8,7 @@ PerfectRep is a 3D pose estimation model tailored specifically for powerlifting 
 
 - Python >= 3.7
 - Pytorch
-- OpenCV
+- Cuda=11.6
 - NumPy
 - Matplotlib
 - Pandas
