@@ -64,7 +64,7 @@ def split_data_by_intervals(data, intervals):
     train_data = np.array([x for x in data if x not in test_data])
     return train_data, test_data
 
-def convert_data(data_path = 'data/fit3d_train/train', test_subjects = ['s03', 's011']):
+def convert_data(data_path = 'data/fit3d_train/train', test_subjects = ['s03', 's11']):
     """
     Convert the dataset download into a dictionary and numpy arrays
 
@@ -84,40 +84,42 @@ def convert_data(data_path = 'data/fit3d_train/train', test_subjects = ['s03', '
     source = []
 
     for root, dirnames, filenames in os.walk(root_dir, topdown=True): # Traverse data with dfs
-        basedir = os.path.basename(os.path.dirname(root)) # Current base directory
+        basedir = os.path.basename(root) # Current base directory
 
-        if not root: # Top of directory tree
-            subjects = dirnames 
+        if basedir == 'train': # Top of directory tree
+            subjects = dirnames
             # Check that test subjects are in dataset      
-            assert all(subject in all_subjects for subject in test_subjects), "Test subjects are not in dataset"
+            assert all(subject in subjects for subject in test_subjects), "Test subjects are not in dataset"
         elif basedir in test_subjects:
             test_split_ids.append(len(joints_3d))
         elif basedir in subjects:
             train_split_ids.append(len(joints_3d))
-        elif basedir == "joints3d_25":
+        elif basedir == 'joints3d_25':
             for file in filenames: # Each file is a seperate exercise
-                with open(file, 'r') as joints:
+                file_path = os.path.join(root, file)
+                with open(file_path, 'r') as joints:
                     data = json.load(joints)
-                    joints_3d.append(data['joints3d_25']) # add joint data to array (17, 3)
-
-                    file_path = os.path.join(root, file)
+                    print(data['joints3d_25'][0])
+                    joints_3d.extend(data['joints3d_25']) # add joint data to array (17, 3)
+                    
                     formatted_source = '_'.join(part.strip('./').replace('/', '_') for part in os.path.splitext(file_path)[0].split('/'))
-                    source.append(formatted_source * len(data['joints3d_25'])) # Add source label for current frame
-        elif basedir in all_camera_params.keys():
+                    source.extend(formatted_source * len(data['joints3d_25'])) # Add source label for current frame
+        elif basedir in all_camera_params.keys() and os.path.basename(os.path.dirname(root)) == 'camera_parameters':
             camera_name = basedir
             for file in filenames:
-                with open(file, 'r') as param_data:
+                file_path = os.path.join(root, file)
+                with open(file_path, 'r') as param_data:
                     data = json.load(param_data)
                     intr_params = data.get('intrinsics_w_distortion', {})
                     all_params = [param for sublist in intr_params.values() for param in sublist]
-                    all_camera_params[camera_name].append(all_params)
+                    all_camera_params[camera_name].extend(all_params)
 
     camera_params = [] # (N, 9)
-    assert set(len(params) for params in all_camera_params.values()) == 1, "Camera params are not all the same length"
+    assert len(set(len(params) for params in all_camera_params.values())) == 1, "Camera params are not all the same length"
     # Randomly choose camera for each clip in sequence of frames
-    for i in range(0, len(all_camera_params.values()[0]), clip_length):
-        curr_clip_camera = np.random.choice(all_camera_params.keys())
-        curr_clip = all_camera_params[curr_clip][i:i+clip_length]
+    for i in range(0, len(joints_3d), clip_length):
+        curr_clip_camera = np.random.choice(list(all_camera_params.keys()))
+        curr_clip = all_camera_params[curr_clip_camera][i:i+clip_length]
         camera_params.append(curr_clip)
 
     assert len(test_split_ids) == len(test_subjects), "Test subject split id missing"
@@ -131,9 +133,7 @@ def convert_data(data_path = 'data/fit3d_train/train', test_subjects = ['s03', '
     for i in test_split_ids:
         test_intervals.append((i, min((x for x in train_split_ids if x > i), key=lambda x: abs(x-i))))
 
-    # Randomly sample 
-
-    # Info to all frames in dataset
+    # Info for all frames in dataset
     joints_3d = np.array(shape=(N, 17, 3), dtype=np.float32)
     joints_2d = project_to_2d(joints_3d, camera_params)
     source = np.array(source)
@@ -160,6 +160,7 @@ def compress_data(out_dir = 'data/motion_3d'):
     data['train']['source'] = source_train
     data['test']['soruce'] = source_test
 
+    ensure_dir(out_dir)
     # Compress data
     with open(os.path.join(out_dir, 'fit3d_processed_data.pkl'), 'rw'):
         pickle.dump(data, f)
