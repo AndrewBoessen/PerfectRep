@@ -43,112 +43,92 @@ def project_to_2d(X, camera_params):
     
     return f*XXX + c
 
-def split_data_by_intervals(data, intervals):
+def read_cam_params(cam_path):
+    with open(cam_path) as f:
+        cam_params = json.load(f)
+        for key1 in cam_params:
+            for key2 in cam_params[key1]:
+                cam_params[key1][key2] = np.array(cam_params[key1][key2]) 
+    return cam_params
+
+def cam_perspective_3d(j3d, cam_params):
     """
-    Splits a numpy ndarray into training and testing datasets based on provided intervals.
+    Convert 3d joints to camera's perspective
 
     Parameters:
-        data (ndarray): The input ndarray to be split, with shape (n_samples, n_features).
-        intervals (list of tuples): A list of tuples representing intervals. Each tuple should
-            contain two integers representing the start and end indices of the interval.
+        j3d: 3D joints (N, *, 3)
+        cam_params: intrinsic and extrinsic camera parameters
+    """
+    return np.matmul(j3d - cam_params['extrinsics']['T'], cam_params['extrinsics']['R'].T)
+    
+def read_data(data_root, dataset_name, subset, subj_name, action_name, camera_name):
+    """
+    Read data for a specified subject and action
+
+    Parameters:
+        data_root: Data directory
+        dataset_name: Parent directory of dataset
+        sebset: train or test subset
+        subj_name: subject to read data from
+        action_name: action to read
+        camera_name: camera
 
     Returns:
-        ndarray, ndarray: Two numpy ndarrays representing the training and testing datasets,
-            respectively.
+        3d_joins: (N, 25, 3)
+        cam_params: extrinsic and intrinsic params
+        annoations: frames of rep intervals
     """
-    test_data = []
-    for interval in test_intervals:
-        start, end = interval
-        test_data.extend(data[start:end])
-    test_data = np.array(test_data)
-    train_data = np.array([x for x in data if x not in test_data])
-    return train_data, test_data
+    cam_path = '%s/%s/%s/%s/camera_parameters/%s/%s.json' % (data_root, dataset_name, subset, subj_name, camera_name, action_name)
+    j3d_path = '%s/%s/%s/%s/joints3d_25/%s.json' % (data_root, dataset_name, subset, subj_name, action_name)
 
-def convert_data(data_path = 'data/fit3d_train/train', clip_length = 243):
-    """
-    Convert the dataset download into a dictionary and numpy arrays
+    cam_params = read_cam_params(cam_path)
 
-    Returns:
-    dictionary for train and test data
-    """
-    root_dir = data_path
+    with open(j3d_path) as f:
+        j3ds = np.array(json.load(f)['joints3d_25'])
 
-    all_camera_params = {'50591643':[],  '58860488':[],  '60457274':[],  '65906101':[]}
+    annotations = None
+    ann_path = '%s/%s/%s/%s/rep_ann.json' % (data_root, dataset_name, subset, subj_name)
+    with open(ann_path) as f:
+        annotations = json.load(f)
+    
+    return j3ds, cam_params, annotations
 
-    joints_3d = []
-    source = []
-    actions = []
+def preprocess_data(data_root = 'data', dataset_name = 'fit3d_train'):
+    data_info_path = '%s/fit3d_info.json' %(data_root)
 
-    assert os.path.exists(root_dir), f"The directory {root_dir} does not exist."
+    with open(data_info_path) as f: # Load dataset info about subjects and actions
+        info = json.load(f)
+    
+    camera_names = info['all_camera_name']
+    train_subj = info['train_subj_names']
+    actions = info['subject_to_act']
 
-    for root, dirnames, filenames in os.walk(root_dir, topdown=True): # Traverse data with dfs
-        basedir = os.path.basename(root) # Current base directory
+    joints_3d_labels = [] # Array of np arrays for 3d joints
+    joints_2d_input = [] # Array of np arrays for 2d joint inputs
+    rep_annotations = {} # Dict holding annotation for a given source label
+    source_labels = [] # Source of frame
 
-        if basedir == 'joints3d_25':
-            for file in filenames: # Each file is a seperate exercise
-                file_path = os.path.join(root, file)
-                with open(file_path, 'r') as joints:
-                    data = json.load(joints)
-                    print(len(data['joints3d_25']))
-                    print(len(data['joints3d_25'][0]))
-                    print(len(data['joints3d_25'][0][0]))
-                    joints_3d.extend(data['joints3d_25']) # add joint data to array (17, 3)
-                    
-                    formatted_source = '_'.join(part.strip('./').replace('/', '_') for part in os.path.splitext(file_path)[0].split('/'))
-                    source.extend(formatted_source * len(data['joints3d_25'])) # Add source label for current frame
+    for subj in train_subj:
+        subj_actions = actions[subj] # Actions of current subject in set
+        for action in subj_actions:
+            for camera in camera_names:
+                joints_3d, cam_params, annotations = read_data(data_root, dataset_name, 'train', subj, action, camera)
+                
+                joints_3d = cam_perspective_3d(cam_params)
+                intrinsic_params = np.concatenate(list(cam_params['intrinsics_w_distortion'].values())) # Extract params with distortion from dict
+                joints_2d = project_to_2d(joints_3d, intrinsic_params) # Get 2D projections from 3D joints
+                action_annotations = annotations[action] # Repetition annotations for current action and subject
+                source = '%s_%s_%s' % (subj, action, camera) # Label for curr batch of frames
 
-                    actions.extend(file.rstrip('.json') * len(data['joints3d_25']))
-        elif basedir in all_camera_params.keys() and os.path.basename(os.path.dirname(root)) == 'camera_parameters':
-            camera_name = basedir
-            for file in filenames:
-                file_path = os.path.join(root, file)
-                with open(file_path, 'r') as param_data:
-                    data = json.load(param_data)
-                    intr_params = data.get('intrinsics_w_distortion', {})
-                    all_params = [param for sublist in intr_params.values() for param in sublist]
-                    all_camera_params[camera_name].extend(all_params)
+                joints_3d_labels.append(joints_3d)
+                joints_2d_input.append(joints_2d)
+                rep_annotations[source] = action_annotations
+                source.extend(source * joints_3d.shape[0])
+    
+    joints_3d_labels = np.concatenate(joints_3d_labels) # Unify all into one ndarray
+    joints_2d_input = np.concatenate(joints_2d_input) # Unify all into one ndarray
+    source_labels = np.array(source_labels)
 
-    camera_params = [] # (N, 9)
-    assert len(set(len(params) for params in all_camera_params.values())) == 1, "Camera params are not all the same length"
-    # Randomly choose camera for each clip in sequence of frames
-    for i in range(0, len(joints_3d), clip_length):
-        curr_clip_camera = np.random.choice(list(all_camera_params.keys()))
-        curr_clip = all_camera_params[curr_clip_camera][i:i+clip_length]
-        camera_params.append(curr_clip)
+    assert joints_3d_labels.shape[-1] == joints_2d_input.shape[-1], "Inputs and Labels are not the same size"
 
-    assert len(source) == len(joints_3d) == len(camera_params) == len(actions), "Joint, source and camera_params sizes are not equal"
-
-    N = len(joints_3d) # Number of totla frames in dataset
-
-    # Info for all frames in dataset
-    joints_3d = np.array(joints_3d)
-    joints_2d = project_to_2d(joints_3d, camera_params)
-    source = np.array(source)
-    actions = np.array(actions)
-
-    return joints_3d, joints_2d, source, actions
-
-def compress_data(out_dir = 'data/motion_3d'):
-    joints_3d, joints_2d, source, actions = convert_data()
-
-    # Data decompossition
-    joints_3d_train, joints_3d_test = joints_3d
-    joints_2d_train, joints_2d_test = joints_2d
-    source_train, source_test = source
-
-    # Create dictionary to compress
-    data = {}
-    data['train'] = {}
-    data['test'] = {}
-
-    data['train']['joints_2d'] = joints_2d
-    data['train']['joints_3d'] = joints_3d
-    data['train']['source'] = source
-    data['train']['actions'] = actions
-
-    ensure_dir(out_dir)
-    # Compress data
-    with open(os.path.join(out_dir, 'fit3d_processed_data.pkl'), 'rw'):
-        pickle.dump(data, f)
-
-compress_data()
+                
