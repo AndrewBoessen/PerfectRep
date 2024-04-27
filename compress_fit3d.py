@@ -71,14 +71,14 @@ def convert_data(data_path = 'data/fit3d_train/train', test_subjects = ['s03', '
     Returns:
     dictionary for train and test data
     """
+    clip_length = 243
     root_dir = data_path
 
     subjects = []
     train_split_ids = []
     test_split_ids = [] # index of test subjects data
-    camera_names = set()
-    camera_parameters = {}
-    camera_params = []
+
+    all_camera_params = {'50591643':[],  '58860488':[],  '60457274':[],  '65906101':[]}
 
     joints_3d = []
     source = []
@@ -94,29 +94,31 @@ def convert_data(data_path = 'data/fit3d_train/train', test_subjects = ['s03', '
             test_split_ids.append(len(joints_3d))
         elif basedir in subjects:
             train_split_ids.append(len(joints_3d))
-        elif "joint_3d" in root:
-            for file in filenames:
+        elif basedir == "joints3d_25":
+            for file in filenames: # Each file is a seperate exercise
                 with open(file, 'r') as joints:
                     data = json.load(joints)
-                    joints_3d.append(data['joints']) # add joint data to array (17, 3)
+                    joints_3d.append(data['joints3d_25']) # add joint data to array (17, 3)
 
                     file_path = os.path.join(root, file)
                     formatted_source = '_'.join(part.strip('./').replace('/', '_') for part in os.path.splitext(file_path)[0].split('/'))
-                    source.append(formatted_source * len(data['joints'])) # Add source label for current frame
-                    camera_params.append(camera_parameters[np.random.choice(list(camera_parameters.keys()))])
-        elif "camera_parameters" in root:
-            for dirnames in dirnames:
-                camera_names.add(basedir)
-        elif basedir in camera_names:
+                    source.append(formatted_source * len(data['joints3d_25'])) # Add source label for current frame
+        elif basedir in all_camera_params.keys():
             camera_name = basedir
             for file in filenames:
                 with open(file, 'r') as param_data:
                     data = json.load(param_data)
                     intr_params = data.get('intrinsics_w_distortion', {})
                     all_params = [param for sublist in intr_params.values() for param in sublist]
-                    if camera_name in camera_parameters and camera_parameters[camera_name] != all_params:
-                        raise AssertionError("Camera parameters do not match")
-                    camera_parameters[camera_name] = all_params
+                    all_camera_params[camera_name].append(all_params)
+
+    camera_params = [] # (N, 9)
+    assert set(len(params) for params in all_camera_params.values()) == 1, "Camera params are not all the same length"
+    # Randomly choose camera for each clip in sequence of frames
+    for i in range(0, len(all_camera_params.values()[0]), clip_length):
+        curr_clip_camera = np.random.choice(all_camera_params.keys())
+        curr_clip = all_camera_params[curr_clip][i:i+clip_length]
+        camera_params.append(curr_clip)
 
     assert len(test_split_ids) == len(test_subjects), "Test subject split id missing"
     assert len(train_split_ids) + len(test_split_ids) == len(subjects), "Train subject split id missing"
