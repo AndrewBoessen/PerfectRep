@@ -64,46 +64,40 @@ def split_data_by_intervals(data, intervals):
     train_data = np.array([x for x in data if x not in test_data])
     return train_data, test_data
 
-def convert_data(data_path = 'data/fit3d_train/train', test_subjects = ['s03', 's11']):
+def convert_data(data_path = 'data/fit3d_train/train', clip_length = 243):
     """
     Convert the dataset download into a dictionary and numpy arrays
 
     Returns:
     dictionary for train and test data
     """
-    clip_length = 243
     root_dir = data_path
-
-    subjects = []
-    train_split_ids = []
-    test_split_ids = [] # index of test subjects data
 
     all_camera_params = {'50591643':[],  '58860488':[],  '60457274':[],  '65906101':[]}
 
     joints_3d = []
     source = []
+    actions = []
+
+    assert os.path.exists(root_dir), f"The directory {root_dir} does not exist."
 
     for root, dirnames, filenames in os.walk(root_dir, topdown=True): # Traverse data with dfs
         basedir = os.path.basename(root) # Current base directory
 
-        if basedir == 'train': # Top of directory tree
-            subjects = dirnames
-            # Check that test subjects are in dataset      
-            assert all(subject in subjects for subject in test_subjects), "Test subjects are not in dataset"
-        elif basedir in test_subjects:
-            test_split_ids.append(len(joints_3d))
-        elif basedir in subjects:
-            train_split_ids.append(len(joints_3d))
-        elif basedir == 'joints3d_25':
+        if basedir == 'joints3d_25':
             for file in filenames: # Each file is a seperate exercise
                 file_path = os.path.join(root, file)
                 with open(file_path, 'r') as joints:
                     data = json.load(joints)
-                    print(data['joints3d_25'][0])
+                    print(len(data['joints3d_25']))
+                    print(len(data['joints3d_25'][0]))
+                    print(len(data['joints3d_25'][0][0]))
                     joints_3d.extend(data['joints3d_25']) # add joint data to array (17, 3)
                     
                     formatted_source = '_'.join(part.strip('./').replace('/', '_') for part in os.path.splitext(file_path)[0].split('/'))
                     source.extend(formatted_source * len(data['joints3d_25'])) # Add source label for current frame
+
+                    actions.extend(file.rstrip('.json') * len(data['joints3d_25']))
         elif basedir in all_camera_params.keys() and os.path.basename(os.path.dirname(root)) == 'camera_parameters':
             camera_name = basedir
             for file in filenames:
@@ -122,26 +116,20 @@ def convert_data(data_path = 'data/fit3d_train/train', test_subjects = ['s03', '
         curr_clip = all_camera_params[curr_clip_camera][i:i+clip_length]
         camera_params.append(curr_clip)
 
-    assert len(test_split_ids) == len(test_subjects), "Test subject split id missing"
-    assert len(train_split_ids) + len(test_split_ids) == len(subjects), "Train subject split id missing"
-    assert len(source) == len(joints_3d) == len(camera_params), "Joint, source and camera_params sizes are not equal"
+    assert len(source) == len(joints_3d) == len(camera_params) == len(actions), "Joint, source and camera_params sizes are not equal"
 
     N = len(joints_3d) # Number of totla frames in dataset
 
-    # Get interval of frames for test subjects
-    test_intervals = []
-    for i in test_split_ids:
-        test_intervals.append((i, min((x for x in train_split_ids if x > i), key=lambda x: abs(x-i))))
-
     # Info for all frames in dataset
-    joints_3d = np.array(shape=(N, 17, 3), dtype=np.float32)
+    joints_3d = np.array(joints_3d)
     joints_2d = project_to_2d(joints_3d, camera_params)
     source = np.array(source)
+    actions = np.array(actions)
 
-    return split_data_by_intervals(joints_3d, test_intervals), split_data_by_intervals(joints_2d, test_intervals), split_data_by_intervals(source, test_intervals)
+    return joints_3d, joints_2d, source, actions
 
 def compress_data(out_dir = 'data/motion_3d'):
-    joints_3d, joints_2d, source = convert_data()
+    joints_3d, joints_2d, source, actions = convert_data()
 
     # Data decompossition
     joints_3d_train, joints_3d_test = joints_3d
@@ -153,12 +141,10 @@ def compress_data(out_dir = 'data/motion_3d'):
     data['train'] = {}
     data['test'] = {}
 
-    data['train']['joints_2d'] = joints_2d_train
-    data['test']['joints_2d'] = joints_2d_test
-    data['train']['joints_2d'] = joints_2d_train
-    data['test']['joints_2d'] = joints_2d_test
-    data['train']['source'] = source_train
-    data['test']['soruce'] = source_test
+    data['train']['joints_2d'] = joints_2d
+    data['train']['joints_3d'] = joints_3d
+    data['train']['source'] = source
+    data['train']['actions'] = actions
 
     ensure_dir(out_dir)
     # Compress data
