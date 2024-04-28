@@ -135,6 +135,25 @@ def preprocess_data(data_root = 'data', dataset_name = 'fit3d_train'):
 
     print("Successfully Processed Data\nInputs %s\nLabels %s\nSource %s" % (joints_2d_input.shape, joints_3d_labels.shape, source_labels.shape))
 
+    data = {
+        'test': {},
+        'train': {
+            '2d_joint_inputs': joints_2d_input,
+            '3d_joint_labels': joints_3d_labels,
+            'source': source_labels,
+            'rep_annotations': rep_annotations
+        }
+    }
+
+    ensure_dir('%s/motion3d' % (data_root))
+
+    file_name = 'fit3d_preprocessed_data.pkl'
+
+    with open('%s/motion3d/%s' % (data_root, file_name), 'wb') as f:
+        pickle.dump(data, f)
+
+    print('Saved processes data to %s/motion3d/%s' % (data_root, file_name))
+
 preprocess_data()
 
                 
