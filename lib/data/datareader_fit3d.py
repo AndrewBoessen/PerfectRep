@@ -10,8 +10,6 @@ random.seed(0)
 
 class DataReaderFit3D(object):
     def __init__(self, n_frames, sample_stride, data_stride_train, data_stride_test, dt_root = 'data/motion3d', dt_file = 'fit3d_preprocessed_data.pkl'):
-        self.gt_trainset = None # Ground truth training
-        self.gt_testset = None # Ground truth test
         self.split_id_train = None # Index to split training data
         self.split_id_test = None # Index to split test data
         self.dt_dataset = read_pkl('%s/%s' % (dt_root, dt_file)) # Preprocessed dataset
@@ -48,6 +46,16 @@ class DataReaderFit3D(object):
 
         return train_labels
 
+    def read_ann(self):
+        """
+        Read annoation data
+
+        Returns dict of numpy arrays
+        """
+        ann = self.dt_dataset['train']['rep_annotations']
+
+        return ann
+
     def get_split_id(self):
         """
         Gets the split IDs based on frame labels for training and testing data.
@@ -74,10 +82,10 @@ class DataReaderFit3D(object):
 
         Returns: training and test data, label pairs (N, 27, 17, 3)
         """
-        train_data = self.read_2d()     # train_data (1559752, 17, 2) test_data (566920, 17, 2)
-        train_labels = self.read_3d() # train_labels (1559752, 17, 3) test_labels (566920, 17, 3)
+        train_data = self.read_2d()     # train_data (N, 25, 2)
+        train_labels = self.read_3d() # train_labels (N, 25, 3)
         split_id_train = self.get_split_id() # Split data into individual clips
-        train_data = train_data[split_id_train] # (N, 47, 17, 2)
-        train_labels, test_labels = train_labels[split_id_train] # (N, 47, 17, 3)
+        train_data = train_data[split_id_train] # (N, 8*47*4=1504, 17, 2)
+        train_labels, test_labels = train_labels[split_id_train] # (N, 1504, 17, 3)
 
         return train_data, train_labels
