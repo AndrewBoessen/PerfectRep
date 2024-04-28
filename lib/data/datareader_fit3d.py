@@ -18,6 +18,20 @@ class DataReaderFit3D(object):
         self.data_stride_train = data_stride_train
         self.data_stride_test = data_stride_test
     
+    def fit3d_to_h36m(self, joints):
+        """
+        Convert the 25 keypoints to 17 to comply with h3.6m format
+
+        Parameters:
+            joints: (N, 25, 3)
+
+        Returns:
+            resized array (N, 17, 3)
+        """
+        assert joints.shape[-1] == 3, "Provided joints are not in correct format"
+        assert joints.shape[-2] == 25, "Provided joints are not from fit3d"
+        return joints[:, :17, :] # Remove last 8 entries in axis 1
+    
     def read_2d(self):
         """
         Read 2D joint data from dataset
@@ -90,7 +104,9 @@ class DataReaderFit3D(object):
         assert any(action in key for key in rep_annotations.keys()), "Action is not defined in the dataset"
 
         train_data = self.read_2d() # train_data (N, 25, 3)
+        train_data = self.fit3d_to_h36m(train_data) # (N, 17, 3)
         train_labels = self.read_3d() # train_labels (N, 25, 3)
+        train_labels = self.fit3d_to_h36m(train_labels) # (N, 17, 3)
         source = self.dt_dataset['train']['source']
 
         actions_ids = np.where(action in source)[0]
@@ -108,7 +124,9 @@ class DataReaderFit3D(object):
         Returns: training and test data, label pairs (N, 1504, 17, 3)
         """
         train_data = self.read_2d() # train_data (N, 25, 3)
+        train_data = self.fit3d_to_h36m(train_data) # (N, 17, 3)
         train_labels = self.read_3d() # train_labels (N, 25, 3)
+        train_labels = self.fit3d_to_h36m(train_labels) # (N, 17, 3)
         split_id_train = self.get_split_id() # Split data into individual clips
         train_data = train_data[split_id_train] # (N, 8*47*4=1504, 17, 3)
         train_labels, test_labels = train_labels[split_id_train] # (N, 1504, 17, 3)
