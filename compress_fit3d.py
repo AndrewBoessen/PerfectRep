@@ -135,7 +135,8 @@ def preprocess_data(data_root = 'data', dataset_name = 'fit3d_train'):
 
     print("Successfully Processed Data\nInputs %s\nLabels %s\nSource %s" % (joints_2d_input.shape, joints_3d_labels.shape, source_labels.shape))
 
-    data = {
+    # Initialize data dictionary
+    data = { 
         'test': {},
         'train': {
             '2d_joint_inputs': joints_2d_input,
@@ -150,10 +151,11 @@ def preprocess_data(data_root = 'data', dataset_name = 'fit3d_train'):
     file_name = 'fit3d_preprocessed_data.pkl'
 
     with open('%s/motion3d/%s' % (data_root, file_name), 'wb') as f:
-        pickle.dump(data, f)
+        pickle.dump(data, f) # Serialize data dictionary
 
     print('Saved processes data to %s/motion3d/%s' % (data_root, file_name))
 
-preprocess_data()
+if __name__ == '__main__':
+    preprocess_data()
 
                 
