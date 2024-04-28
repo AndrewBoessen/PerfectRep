@@ -76,16 +76,41 @@ class DataReaderFit3D(object):
 
         return self.split_id_train
     
+    def get_action_sliced_data(self, action = None):
+        """
+        Get sliced clips for a given action. Used for classification finetuning
+
+        Parameters:
+            actions: Name of action to select
+
+        Returns: training and test data, label pairs (N, 17, 3)
+        """
+        rep_annotations = self.read_ann()
+        # Assert given action is valid
+        assert any(action in key for key in rep_annotations.keys()), "Action is not defined in the dataset"
+
+        train_data = self.read_2d() # train_data (N, 25, 3)
+        train_labels = self.read_3d() # train_labels (N, 25, 3)
+        source = self.dt_dataset['train']['source']
+
+        actions_ids = np.where(action in source)[0]
+
+        actions_frames_2d = train_data[actions_ids]
+        actions_frames_3d = train_labels[actions_ids]
+
+        return actions_frames_2d, actions_frames_3d 
+        
+    
     def get_sliced_data(self):
         """
         Gets the data and splits into traning and test sets
 
-        Returns: training and test data, label pairs (N, 27, 17, 3)
+        Returns: training and test data, label pairs (N, 1504, 17, 3)
         """
-        train_data = self.read_2d()     # train_data (N, 25, 2)
+        train_data = self.read_2d() # train_data (N, 25, 3)
         train_labels = self.read_3d() # train_labels (N, 25, 3)
         split_id_train = self.get_split_id() # Split data into individual clips
-        train_data = train_data[split_id_train] # (N, 8*47*4=1504, 17, 2)
+        train_data = train_data[split_id_train] # (N, 8*47*4=1504, 17, 3)
         train_labels, test_labels = train_labels[split_id_train] # (N, 1504, 17, 3)
 
         return train_data, train_labels
