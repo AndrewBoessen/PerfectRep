@@ -7,8 +7,6 @@ import numpy as np
 
 from lib.utils.tools import ensure_dir
 
-ROOT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '.')
-
 def project_to_2d(X, camera_params):
     """
     Project 3D points to 2D using the Human3.6M camera projection function.
@@ -17,8 +15,6 @@ def project_to_2d(X, camera_params):
     Arguments:
     X -- 3D points in *camera space* to transform (N, *, 3)
     camera_params -- intrinsic parameteres (N, 2+2+3+2=9)
-
-    https://github.com/facebookresearch/VideoPose3D/blob/main/common/camera.py
     """
     assert X.shape[-1] == 3
     assert len(camera_params.shape) == 2
@@ -26,18 +22,18 @@ def project_to_2d(X, camera_params):
     assert X.shape[0] == camera_params.shape[0]
     
     while len(camera_params.shape) < len(X.shape):
-        camera_params = camera_params.unsqueeze(1)
+        camera_params = np.expand_dims(camera_params, axis=1)
         
     f = camera_params[..., :2]
     c = camera_params[..., 2:4]
     k = camera_params[..., 4:7]
     p = camera_params[..., 7:]
     
-    XX = torch.clamp(X[..., :2] / X[..., 2:], min=-1, max=1)
-    r2 = torch.sum(XX[..., :2]**2, dim=len(XX.shape)-1, keepdim=True)
+    XX = np.clip(X[..., :2] / X[..., 2:], -1, 1)
+    r2 = np.sum(XX[..., :2]**2, axis=len(XX.shape)-1, keepdims=True)
 
-    radial = 1 + torch.sum(k * torch.cat((r2, r2**2, r2**3), dim=len(r2.shape)-1), dim=len(r2.shape)-1, keepdim=True)
-    tan = torch.sum(p*XX, dim=len(XX.shape)-1, keepdim=True)
+    radial = 1 + np.sum(k * np.concatenate((r2, r2**2, r2**3), axis=len(r2.shape)-1), axis=len(r2.shape)-1, keepdims=True)
+    tan = np.sum(p*XX, axis=len(XX.shape)-1, keepdims=True)
 
     XXX = XX*(radial + tan) + p*r2
     
@@ -117,21 +113,27 @@ def preprocess_data(data_root = 'data', dataset_name = 'fit3d_train'):
                 joints_3d = cam_perspective_3d(joints_3d, cam_params)
                 intrinsic_params = np.hstack(list(cam_params['intrinsics_w_distortion'].values())) # Extract params with distortion from dict
                 joints_2d = project_to_2d(joints_3d, np.tile(intrinsic_params, (joints_3d.shape[0],1))) # Get 2D projections from 3D joints
-                action_annotations = annotations[action] # Repetition annotations for current action and subject
+                try:
+                    action_annotations = annotations[action] # Repetition annotations for current action and subject
+                except:
+                    action_annotations = None
                 source = '%s_%s_%s' % (subj, action, camera) # Label for curr batch of frames
 
                 joints_3d_labels.append(joints_3d)
                 joints_2d_input.append(joints_2d)
-                rep_annotations[source] = action_annotations
-                source.extend(source * joints_3d.shape[0])
+                if action_annotations:
+                    rep_annotations[source] = action_annotations
+                source_labels.extend([source] * joints_3d.shape[0])
     
-    joints_3d_labels = np.hstack(joints_3d_labels) # Unify all into one ndarray
-    joints_2d_input = np.hstack(joints_2d_input) # Unify all into one ndarray
+    joints_3d_labels = np.concatenate(joints_3d_labels, axis=0) # Unify all into one ndarray
+    joints_2d_input = np.concatenate(joints_2d_input, axis=0) # Unify all into one ndarray
     source_labels = np.array(source_labels)
 
-    assert joints_3d_labels.shape[-1] == joints_2d_input.shape[-1], "Inputs and Labels are not the same size"
+    assert joints_3d_labels.shape[0] == joints_2d_input.shape[0], "Inputs and Labels are not the same size"
+    assert joints_3d_labels.shape[-1] == 3, "3D joints are not 3 dimensional"
+    assert joints_2d_input.shape[-1] == 2, "2D joints are not 2 dimensional"
 
-    print("Successfully Processed Data\nInputs %s\nLabels %s\nSource %s" % (joints_2d_input.shape, joints_3d_labels.shape, source.shape))
+    print("Successfully Processed Data\nInputs %s\nLabels %s\nSource %s" % (joints_2d_input.shape, joints_3d_labels.shape, source_labels.shape))
 
 preprocess_data()
 
