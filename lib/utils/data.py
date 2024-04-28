@@ -77,6 +77,16 @@ def flip_data(data):
     return flipped_data
 
 def resample(ori_len, target_len, replay=False, randomness=True):
+    """
+    Resamples a clip to a desired length. 
+    This is either done by replaying the clip or linearly spacing the clip in the desired sequence length
+
+    Args:
+        ori_len (int): The length of the original clip
+        target_len (int): The target length for the new clip
+        replay (bool, optional): Choose whether to replay the clip. Defaults to False
+        randomness (bool, optional): Randomly shuffle resampled clip. Has no effect if replay is enabled. Defaults to True
+    """
     if replay:
         if ori_len > target_len:
             st = np.random.randint(ori_len-target_len)
@@ -85,7 +95,7 @@ def resample(ori_len, target_len, replay=False, randomness=True):
             return np.array(range(target_len)) % ori_len  # Replay padding
     else:
         if randomness:
-            even = np.linspace(0, ori_len, num=target_len, endpoint=False)
+            even = np.linspace(0, ori_len, num=target_len, endpoint=False) # Sequence of randomly spaced values in range of target length
             if ori_len < target_len:
                 low = np.floor(even)
                 high = np.ceil(even)
@@ -94,7 +104,7 @@ def resample(ori_len, target_len, replay=False, randomness=True):
             else:
                 interval = even[1] - even[0]
                 result = np.random.random(even.shape)*interval + even
-            result = np.clip(result, a_min=0, a_max=ori_len-1).astype(np.uint32)
+            result = np.clip(result, a_min=0, a_max=ori_len-1).astype(np.uint32) # Clip so values fall in length of original clip
         else:
             result = np.linspace(0, ori_len, num=target_len, endpoint=False, dtype=int)
         return result
@@ -128,7 +138,7 @@ def split_clips(vid_list, n_frames, data_stride):
         if i == len(vid_list):
             break
 
-        if vid_list[i] != vid_list[i - 1]:
+        if vid_list[i] != vid_list[i - 1]: # Check if current frame is from a different clip
             if not (vid_list[i - 1] in saved):  # If the previous frame hasn't been saved yet
                 resampled = resample(i - st, n_frames) + st  # Resample the clip
                 result.append(resampled)  # Add the resampled clip to the result list
