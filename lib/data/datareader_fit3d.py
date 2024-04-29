@@ -38,11 +38,11 @@ class DataReaderFit3D(object):
 
         Returns train and test sets ([N, 17, 3])
         """
-        res_w, res_h = 900 # Camera resolution
+        res_w = res_h = 900 # Camera resolution
 
-        trainset = self.dt_dataset['train']['joint_2d'][::self.sample_stride, :, :2].astype(np.float32)  # [N, 17, 2]
+        trainset = self.dt_dataset['train']['2d_joint_inputs'][::self.sample_stride, :, :2].astype(np.float32)  # [N, 17, 2]
         
-        trainset[idx, :, :] = trainset[idx, :, :] / res_w * 2 - [1, res_h / res_w] # Norm [-1,1]
+        trainset[:, :, :] = trainset[:, :, :] / res_w * 2 - [1, res_h / res_w] # Norm [-1,1]
 
         # No conf provided, fill with 1.
         train_confidence = np.ones(trainset.shape)[:,:,0:1]
@@ -56,7 +56,7 @@ class DataReaderFit3D(object):
 
         Returns train and test sets ([N, 17, 3])
         """
-        train_labels = self.dt_dataset['train']['joint3d_image'][::self.sample_stride, :, :3].astype(np.float32)  # [N, 17, 3]
+        train_labels = self.dt_dataset['train']['3d_joint_labels'][::self.sample_stride, :, :3].astype(np.float32)  # [N, 17, 3]
 
         return train_labels
 
@@ -128,7 +128,7 @@ class DataReaderFit3D(object):
         train_labels = self.read_3d() # train_labels (N, 25, 3)
         train_labels = self.fit3d_to_h36m(train_labels) # (N, 17, 3)
         split_id_train = self.get_split_id() # Split data into individual clips
-        train_data = train_data[split_id_train] # (N, 8*47*4=1504, 17, 3)
-        train_labels, test_labels = train_labels[split_id_train] # (N, 1504, 17, 3)
+        train_data = train_data[split_id_train] # (18232, 243, 17, 3)
+        train_labels = train_labels[split_id_train] # (18232, 243, 17, 3)
 
         return train_data, train_labels

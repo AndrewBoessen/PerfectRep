@@ -46,6 +46,16 @@ def hex2rgb(hex, number_of_colors=3):
         h = h[6:]
     return rgb
 
+def get_img_from_fig(fig, dpi=120):
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight", pad_inches=0)
+    buf.seek(0)
+    img_arr = np.frombuffer(buf.getvalue(), dtype=np.uint8)
+    buf.close()
+    img = cv2.imdecode(img_arr, 1)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
+    return img
+
 def pixel2world_vis_motion(motion, dim=2):
 #     pose: (17,2,N)
     N = motion.shape[-1]
