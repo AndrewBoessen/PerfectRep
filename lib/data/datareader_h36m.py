@@ -5,7 +5,7 @@ import os, sys
 import random
 import copy
 from lib.utils.tools import read_pkl
-from lib.utils.utils_data import split_clips
+from lib.utils.data import split_clips
 random.seed(0)
     
 class DataReaderH36M(object):
