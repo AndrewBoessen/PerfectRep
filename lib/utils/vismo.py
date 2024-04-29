@@ -91,6 +91,23 @@ def pixel2world_vis_motion(motion, dim=2):
     return (motion + offset) * 512 / 2
 
 def joints2image(joints_position, colors, transparency=False, H=1000, W=1000, nr_joints=49, imtype=np.uint8, grayscale=False, bg_color=(255, 255, 255)):
+    """
+    Converts joint positions to an image representation.
+
+    Args:
+        joints_position (numpy.ndarray): Array of joint positions.
+        colors (list): List of colors for rendering.
+        transparency (bool, optional): Flag indicating whether transparency is enabled. Defaults to False.
+        H (int, optional): Height of the output image. Defaults to 1000.
+        W (int, optional): Width of the output image. Defaults to 1000.
+        nr_joints (int, optional): Number of joints. Defaults to 49.
+        imtype (type, optional): Image type. Defaults to np.uint8.
+        grayscale (bool, optional): Flag indicating whether to convert the image to grayscale. Defaults to False.
+        bg_color (tuple, optional): Background color of the image. Defaults to (255, 255, 255).
+
+    Returns:
+        list: List containing the image and its cropped version.
+    """
     nr_joints = joints_position.shape[0] # Number of joints
 
     if nr_joints == 17: # H36M, 0: 'root',
@@ -184,6 +201,27 @@ def joints2image(joints_position, colors, transparency=False, H=1000, W=1000, nr
 
 
 def motion2video(motion, save_path, colors, h=512, w=512, bg_color=(255, 255, 255), transparency=False, motion_tgt=None, fps=25, save_frame=False, grayscale=False, show_progress=True, as_array=False):
+    """
+    Converts motion data to a video and optionally saves it.
+
+    Args:
+        motion (numpy.ndarray): Motion data.
+        save_path (str): Path to save the resulting video.
+        colors (list): List of colors for rendering.
+        h (int, optional): Height of the video frames. Defaults to 512.
+        w (int, optional): Width of the video frames. Defaults to 512.
+        bg_color (tuple, optional): Background color of the frames. Defaults to (255, 255, 255).
+        transparency (bool, optional): Flag indicating whether transparency is enabled. Defaults to False.
+        motion_tgt (numpy.ndarray, optional): Target motion data for comparison. Defaults to None.
+        fps (int, optional): Frames per second of the video. Defaults to 25.
+        save_frame (bool, optional): Flag indicating whether to save individual frames. Defaults to False.
+        grayscale (bool, optional): Flag indicating whether to convert frames to grayscale. Defaults to False.
+        show_progress (bool, optional): Flag indicating whether to show progress bar. Defaults to True.
+        as_array (bool, optional): Flag indicating whether to return video frames as an array. Defaults to False.
+
+    Returns:
+        numpy.ndarray or None: If 'as_array' is True, returns the video frames as an array, otherwise, returns None.
+    """
     nr_joints = motion.shape[0]
     vlen = motion.shape[-1]
 
@@ -216,6 +254,15 @@ def motion2video(motion, save_path, colors, h=512, w=512, bg_color=(255, 255, 25
     return out_array
 
 def motion2video_3d(motion, save_path, fps=25, keep_imgs = False):
+    """
+    Converts 3D motion data to a 3D video.
+
+    Args:
+        motion (numpy.ndarray): 3D motion data.
+        save_path (str): Path to save the resulting video.
+        fps (int, optional): Frames per second of the video. Defaults to 25.
+        keep_imgs (bool, optional): Flag indicating whether to keep intermediate images. Defaults to False.
+    """
 #     motion: (17,3,N)
     videowriter = imageio.get_writer(save_path, fps=fps)
     vlen = motion.shape[-1]
@@ -257,10 +304,26 @@ def motion2video_3d(motion, save_path, fps=25, keep_imgs = False):
     videowriter.close()
 
 def save_image(image_numpy, image_path):
+    """
+    Saves an image to the specified path.
+
+    Args:
+        image_numpy (numpy.ndarray): Image data.
+        image_path (str): Path to save the image.
+    """
     image_pil = Image.fromarray(image_numpy)
     image_pil.save(image_path)
 
 def bounding_box(img):
+    """
+    Computes the bounding box of an image.
+
+    Args:
+        img (numpy.ndarray): Image data.
+
+    Returns:
+        tuple: Bounding box coordinates (min_row, max_row, min_col, max_col).
+    """
     a = np.where(img != 0)
     bbox = np.min(a[0]), np.max(a[0]), np.min(a[1]), np.max(a[1])
     return bbox
