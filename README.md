@@ -1,5 +1,8 @@
 # PerfectRep - 3D Pose Analysis for Powerlifters 🏋️🦾
 
+<a href="https://pytorch.org/get-started/locally/"><img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&logoColor=white"></a>
+[![Build Status](https://github.com/AndrewBoessen/PerfectRep/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/AndrewBoessen/PerfectRep/actions/workflows/python-app.yml)
+
 ![PerfectRep](./assets/extended_banner.png)
 
 PerfectRep is a 3D pose estimation model tailored specifically for powerlifting analysis. It allows for precise tracking and analysis of lifter's movements to ensure perfect form and technique.
@@ -66,6 +69,8 @@ PerfectRep is a 3D pose estimation model tailored specifically for powerlifting 
    ```
 
 ## Documentation
+
+[![view - Documentation](https://img.shields.io/badge/view-Documentation-blue?style=for-the-badge)](/docs/ "Go to project documentation")
 
 - [Pretrain Model](./docs/pretrain.md)
 - [3D Pose Estimation](./docs/3D-pose.md)
