@@ -55,7 +55,7 @@ def cam_perspective_3d(j3d, cam_params):
         j3d: 3D joints (N, *, 3)
         cam_params: intrinsic and extrinsic camera parameters
     """
-    return (np.array(j3d) - cam_params['extrinsics']['T'], np.transpose(cam_params['extrinsics']['R']))
+    return np.matmul(j3d - np.array(cam_params['extrinsics']['T']), np.array(cam_params['extrinsics']['R']).T)
     
 def read_data(data_root, dataset_name, subset, subj_name, action_name, camera_name):
     """
