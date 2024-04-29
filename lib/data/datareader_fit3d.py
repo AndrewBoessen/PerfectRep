@@ -57,7 +57,7 @@ class DataReaderFit3D(object):
         Returns train and test sets ([N, 17, 3])
         """
         train_labels = self.dt_dataset['train']['3d_joint_labels'][::self.sample_stride, :, :3].astype(np.float32)  # [N, 17, 3]
-
+        
         return train_labels
 
     def read_ann(self):

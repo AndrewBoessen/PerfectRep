@@ -39,6 +39,7 @@ def crop_scale_3d(motion, scale_range=[1, 1]):
     Args:
         motion (numpy array): 3D motion data with shape (T, 17, 3).
         scale_range (list, optional): Range of scales to apply. Defaults to [1, 1].
+        Z is relative to the first frame's root.
 
     Returns:
         numpy array: Normalized 3D motion data with shape (T, 17, 3).

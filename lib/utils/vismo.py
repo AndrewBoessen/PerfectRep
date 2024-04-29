@@ -14,6 +14,18 @@ from mpl_toolkits.mplot3d import Axes3D
 import ipdb
 
 def render_and_save(motion_input, save_path, keep_imgs=False, fps=25, color="#F96706#FB8D43#FDB381", with_conf=False):
+    """
+    Render and save motion data as a video.
+
+    Args:
+        motion_input (numpy.ndarray): Input motion data. If the last dimension is 2 or 3, it's expected to be of shape (T, 17, D).
+            Otherwise, it's expected to be of shape (J, D, T), where J is the number of joints, D is the dimensionality, and T is the number of frames.
+        save_path (str): Path to save the rendered video.
+        keep_imgs (bool, optional): Whether to keep intermediate image files. Defaults to False.
+        fps (int, optional): Frames per second of the rendered video. Defaults to 25.
+        color (str, optional): Hexadecimal color code to use for rendering the motion. Defaults to "#F96706#FB8D43#FDB381".
+        with_conf (bool, optional): Whether the motion data includes confidence values. Defaults to False.
+    """
     ensure_dir(os.path.dirname(save_path))
     motion = copy.deepcopy(motion_input)
     if motion.shape[-1]==2 or motion.shape[-1]==3:
@@ -47,6 +59,13 @@ def hex2rgb(hex, number_of_colors=3):
     return rgb
 
 def get_img_from_fig(fig, dpi=120):
+    """
+    Converts plt figure to image if joints
+
+    Args:
+        fig: Figure to get image for
+        dpi: Resoltuion of saved image. Defualts to 120
+    """
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight", pad_inches=0)
     buf.seek(0)
@@ -57,8 +76,13 @@ def get_img_from_fig(fig, dpi=120):
     return img
 
 def pixel2world_vis_motion(motion, dim=2):
-#     pose: (17,2,N)
-    N = motion.shape[-1]
+    """
+    Convert motion keypoits to image cordinates
+
+    Args:
+        motion: (N, 17, 3) Frames in motion sequence
+    """
+    N = motion.shape[-1] # Number of frames
     if dim==2:
         offset = np.ones([2,N]).astype(np.float32)
     else:
@@ -67,56 +91,25 @@ def pixel2world_vis_motion(motion, dim=2):
     return (motion + offset) * 512 / 2
 
 def joints2image(joints_position, colors, transparency=False, H=1000, W=1000, nr_joints=49, imtype=np.uint8, grayscale=False, bg_color=(255, 255, 255)):
-#     joints_position: [17*2]
-    nr_joints = joints_position.shape[0]
+    nr_joints = joints_position.shape[0] # Number of joints
 
-    if nr_joints == 49: # full joints(49): basic(15) + eyes(2) + toes(2) + hands(30)
-        limbSeq = [[0, 1], [1, 2], [1, 5], [1, 8], [2, 3], [3, 4], [5, 6], [6, 7], \
-                   [8, 9], [8, 13], [9, 10], [10, 11], [11, 12], [13, 14], [14, 15], [15, 16],
-                   ]#[0, 17], [0, 18]] #ignore eyes
-
-        L = rgb2rgba(colors[0]) if transparency else colors[0]
-        M = rgb2rgba(colors[1]) if transparency else colors[1]
-        R = rgb2rgba(colors[2]) if transparency else colors[2]
-
-        colors_joints = [M, M, L, L, L, R, R,
-                  R, M, L, L, L, L, R, R, R,
-                  R, R, L] + [L] * 15 + [R] * 15
-
-        colors_limbs = [M, L, R, M, L, L, R,
-                  R, L, R, L, L, L, R, R, R,
-                  R, R]
-    elif nr_joints == 15: # basic joints(15) + (eyes(2))
-        limbSeq = [[0, 1], [1, 2], [1, 5], [1, 8], [2, 3], [3, 4], [5, 6], [6, 7],
-                   [8, 9], [8, 12], [9, 10], [10, 11], [12, 13], [13, 14]]
-                    # [0, 15], [0, 16] two eyes are not drawn
-
-        L = rgb2rgba(colors[0]) if transparency else colors[0]
-        M = rgb2rgba(colors[1]) if transparency else colors[1]
-        R = rgb2rgba(colors[2]) if transparency else colors[2]
-
-        colors_joints = [M, M, L, L, L, R, R,
-                         R, M, L, L, L, R, R, R]
-
-        colors_limbs = [M, L, R, M, L, L, R,
-                        R, L, R, L, L, R, R]
-    elif nr_joints == 17: # H36M, 0: 'root',
-    #                             1: 'rhip',
-    #                             2: 'rkne',
-    #                             3: 'rank',
-    #                             4: 'lhip',
-    #                             5: 'lkne',
-    #                             6: 'lank',
-    #                             7: 'belly',
-    #                             8: 'neck',
-    #                             9: 'nose',
-    #                             10: 'head',
-    #                             11: 'lsho',
-    #                             12: 'lelb',
-    #                             13: 'lwri',
-    #                             14: 'rsho',
-    #                             15: 'relb',
-    #                             16: 'rwri'
+    if nr_joints == 17: # H36M, 0: 'root',
+    #                           1: 'rhip',
+    #                           2: 'rkne',
+    #                           3: 'rank',
+    #                           4: 'lhip',
+    #                           5: 'lkne',
+    #                           6: 'lank',
+    #                           7: 'belly',
+    #                           8: 'neck',
+    #                           9: 'nose',
+    #                           10: 'head',
+    #                           11: 'lsho',
+    #                           12: 'lelb',
+    #                           13: 'lwri',
+    #                           14: 'rsho',
+    #                           15: 'relb',
+    #                           16: 'rwri'
         limbSeq = [[0, 1], [1, 2], [2, 3], [0, 4], [4, 5], [5, 6], [0, 7], [7, 8], [8, 9], [8, 11], [8, 14], [9, 10], [11, 12], [12, 13], [14, 15], [15, 16]]
 
         L = rgb2rgba(colors[0]) if transparency else colors[0]
@@ -192,7 +185,6 @@ def joints2image(joints_position, colors, transparency=False, H=1000, W=1000, nr
 
 def motion2video(motion, save_path, colors, h=512, w=512, bg_color=(255, 255, 255), transparency=False, motion_tgt=None, fps=25, save_frame=False, grayscale=False, show_progress=True, as_array=False):
     nr_joints = motion.shape[0]
-#     as_array = save_path.endswith(".npy")
     vlen = motion.shape[-1]
 
     out_array = np.zeros([vlen, h, w, 3]) if as_array else None
