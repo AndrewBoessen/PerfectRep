@@ -30,6 +30,12 @@ class Augmenter2D(object):
         return f + shift
     
     def add_noise(self, motion_2d):
+        """
+        Add gaussian and uniform noise to the joints for a given sequence of 2d motion clips
+
+        Args:
+            motion_2d: motion data (N,T,J,C) (N,243,17,3)
+        """
         a, b, m, s = self.d2c_params["a"], self.d2c_params["b"], self.d2c_params["m"], self.d2c_params["s"]
         if "uniform_range" in self.noise.keys():
             uniform_range = self.noise["uniform_range"]
@@ -91,3 +97,25 @@ class Augmenter2D(object):
         if mask:
             motion_2d = self.add_mask(motion_2d)
         return motion_2d
+
+class Augmenter3D(object):
+    """
+        Make 3D augmentations when dataloaders get items. NumPy single motion version.
+    """
+    def __init__(self, args):
+        self.flip = args.flip
+        if hasattr(args, "scale_range_pretrain"):
+            self.scale_range_pretrain = args.scale_range_pretrain
+        else:
+            self.scale_range_pretrain = None
+    
+    def augment3D(self, motion_3d):
+        """
+        Augment a single 3d motion clip
+        """
+        # motion_3d (N, J, C) (243, 17, 3)
+        if self.scale_range_pretrain:
+            motion_3d = crop_scale_3d(motion_3d, self.scale_range_pretrain) # Normalize 3D to a given range of vals e.g. [1, 1]
+        if self.flip and random.random()>0.5:                       
+            motion_3d = flip_data(motion_3d) # Flip orientation of joints in motion sequence
+        return motion_3d
