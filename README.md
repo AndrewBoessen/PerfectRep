@@ -1,6 +1,7 @@
 # PerfectRep - 3D Pose Analysis for Powerlifters 🏋️🦾
 
 <a href="https://pytorch.org/get-started/locally/"><img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&logoColor=white"></a>
+
 [![Build Status](https://github.com/AndrewBoessen/PerfectRep/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/AndrewBoessen/PerfectRep/actions/workflows/python-app.yml)
 
 ![PerfectRep](./assets/extended_banner.png)
