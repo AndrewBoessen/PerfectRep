@@ -84,6 +84,12 @@ For pretraing we use the Human3.6m data set and the Fit3D data set is used for f
 
 Once downloaded unzip both files into `data/motion3d`
 
+> To processes the raw dataset downloaded from [Fit3D website](https://fit3d.imar.ro/home) place the train dataset and `fit3d_info.json`file in `data/fit3d_train/` and run
+
+```
+python compress_fit3d.py
+```
+
 ## Documentation
 
 [![view - Documentation](https://img.shields.io/badge/view-Documentation-blue?style=for-the-badge)](/docs/ "Go to project documentation")
