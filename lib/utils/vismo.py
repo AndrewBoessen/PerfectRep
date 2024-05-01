@@ -8,10 +8,8 @@ import io
 from tqdm import tqdm
 from PIL import Image
 from lib.utils.tools import ensure_dir
-import matplotlib
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import ipdb
+
 
 def render_and_save(motion_input, save_path, keep_imgs=False, fps=25, color="#F96706#FB8D43#FDB381", with_conf=False):
     """
@@ -28,24 +26,27 @@ def render_and_save(motion_input, save_path, keep_imgs=False, fps=25, color="#F9
     """
     ensure_dir(os.path.dirname(save_path))
     motion = copy.deepcopy(motion_input)
-    if motion.shape[-1]==2 or motion.shape[-1]==3:
-        motion = np.transpose(motion, (1,2,0))   #(T,17,D) -> (17,D,T) 
-    if motion.shape[1]==2 or with_conf:
+    if motion.shape[-1] == 2 or motion.shape[-1] == 3:
+        motion = np.transpose(motion, (1, 2, 0))  # (T,17,D) -> (17,D,T)
+    if motion.shape[1] == 2 or with_conf:
         colors = hex2rgb(color)
         if not with_conf:
             J, D, T = motion.shape
-            motion_full = np.ones([J,3,T])
-            motion_full[:,:2,:] = motion
+            motion_full = np.ones([J, 3, T])
+            motion_full[:, :2, :] = motion
         else:
             motion_full = motion
-        motion_full[:,:2,:] = pixel2world_vis_motion(motion_full[:,:2,:])
+        motion_full[:, :2, :] = pixel2world_vis_motion(motion_full[:, :2, :])
         motion2video(motion_full, save_path=save_path, colors=colors, fps=fps)
     else:
         motion_world = pixel2world_vis_motion(motion, dim=3)
-        motion2video_3d(motion_world, save_path=save_path, keep_imgs=keep_imgs, fps=fps)
+        motion2video_3d(motion_world, save_path=save_path,
+                        keep_imgs=keep_imgs, fps=fps)
+
 
 def rgb2rgba(color):
     return (color[0], color[1], color[2], 255)
+
 
 def hex2rgb(hex, number_of_colors=3):
     h = hex
@@ -53,10 +54,11 @@ def hex2rgb(hex, number_of_colors=3):
     for i in range(number_of_colors):
         h = h.lstrip('#')
         hex_color = h[0:6]
-        rgb_color = [int(hex_color[i:i+2], 16) for i in (0, 2 ,4)]
+        rgb_color = [int(hex_color[i:i+2], 16) for i in (0, 2, 4)]
         rgb.append(rgb_color)
         h = h[6:]
     return rgb
+
 
 def get_img_from_fig(fig, dpi=120):
     """
@@ -75,6 +77,7 @@ def get_img_from_fig(fig, dpi=120):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGBA)
     return img
 
+
 def pixel2world_vis_motion(motion, dim=2):
     """
     Convert motion keypoits to image cordinates
@@ -82,13 +85,14 @@ def pixel2world_vis_motion(motion, dim=2):
     Args:
         motion: (N, 17, 3) Frames in motion sequence
     """
-    N = motion.shape[-1] # Number of frames
-    if dim==2:
-        offset = np.ones([2,N]).astype(np.float32)
+    N = motion.shape[-1]  # Number of frames
+    if dim == 2:
+        offset = np.ones([2, N]).astype(np.float32)
     else:
-        offset = np.ones([3,N]).astype(np.float32)
-        offset[2,:] = 0
+        offset = np.ones([3, N]).astype(np.float32)
+        offset[2, :] = 0
     return (motion + offset) * 512 / 2
+
 
 def joints2image(joints_position, colors, transparency=False, H=1000, W=1000, nr_joints=49, imtype=np.uint8, grayscale=False, bg_color=(255, 255, 255)):
     """
@@ -108,26 +112,27 @@ def joints2image(joints_position, colors, transparency=False, H=1000, W=1000, nr
     Returns:
         list: List containing the image and its cropped version.
     """
-    nr_joints = joints_position.shape[0] # Number of joints
+    nr_joints = joints_position.shape[0]  # Number of joints
 
-    if nr_joints == 17: # H36M, 0: 'root',
-    #                           1: 'rhip',
-    #                           2: 'rkne',
-    #                           3: 'rank',
-    #                           4: 'lhip',
-    #                           5: 'lkne',
-    #                           6: 'lank',
-    #                           7: 'belly',
-    #                           8: 'neck',
-    #                           9: 'nose',
-    #                           10: 'head',
-    #                           11: 'lsho',
-    #                           12: 'lelb',
-    #                           13: 'lwri',
-    #                           14: 'rsho',
-    #                           15: 'relb',
-    #                           16: 'rwri'
-        limbSeq = [[0, 1], [1, 2], [2, 3], [0, 4], [4, 5], [5, 6], [0, 7], [7, 8], [8, 9], [8, 11], [8, 14], [9, 10], [11, 12], [12, 13], [14, 15], [15, 16]]
+    if nr_joints == 17:  # H36M, 0: 'root',
+        #                           1: 'rhip',
+        #                           2: 'rkne',
+        #                           3: 'rank',
+        #                           4: 'lhip',
+        #                           5: 'lkne',
+        #                           6: 'lank',
+        #                           7: 'belly',
+        #                           8: 'neck',
+        #                           9: 'nose',
+        #                           10: 'head',
+        #                           11: 'lsho',
+        #                           12: 'lelb',
+        #                           13: 'lwri',
+        #                           14: 'rsho',
+        #                           15: 'relb',
+        #                           16: 'rwri'
+        limbSeq = [[0, 1], [1, 2], [2, 3], [0, 4], [4, 5], [5, 6], [0, 7], [7, 8], [
+            8, 9], [8, 11], [8, 14], [9, 10], [11, 12], [12, 13], [14, 15], [15, 16]]
 
         L = rgb2rgba(colors[0]) if transparency else colors[0]
         M = rgb2rgba(colors[1]) if transparency else colors[1]
@@ -135,14 +140,15 @@ def joints2image(joints_position, colors, transparency=False, H=1000, W=1000, nr
 
         colors_joints = [M, R, R, R, L, L, L, M, M, M, M, L, L, L, R, R, R]
         colors_limbs = [R, R, R, L, L, L, M, M, M, L, R, M, L, L, R, R]
-        
+
     else:
         raise ValueError("Only support number of joints be 49 or 17 or 15")
 
     if transparency:
         canvas = np.zeros(shape=(H, W, 4))
     else:
-        canvas = np.ones(shape=(H, W, 3)) * np.array(bg_color).reshape([1, 1, 3])
+        canvas = np.ones(shape=(H, W, 3)) * \
+            np.array(bg_color).reshape([1, 1, 3])
     hips = joints_position[0]
     neck = joints_position[8]
     torso_length = ((hips[1] - neck[1]) ** 2 + (hips[0] - neck[0]) ** 2) ** 0.5
@@ -157,12 +163,14 @@ def joints2image(joints_position, colors, transparency=False, H=1000, W=1000, nr
             radius = 2
         else:
             radius = joints_radius
-        if len(joints_position[i])==3:                 # If there is confidence, weigh by confidence
+        # If there is confidence, weigh by confidence
+        if len(joints_position[i]) == 3:
             weight = joints_position[i][2]
-            if weight==0:
+            if weight == 0:
                 continue
-        cv2.circle(canvas, (int(joints_position[i][0]),int(joints_position[i][1])), radius, colors_joints[i], thickness=-1)
-        
+        cv2.circle(canvas, (int(joints_position[i][0]), int(
+            joints_position[i][1])), radius, colors_joints[i], thickness=-1)
+
     stickwidth = 2
     for i in range(len(limbSeq)):
         limb = limbSeq[i]
@@ -171,11 +179,11 @@ def joints2image(joints_position, colors, transparency=False, H=1000, W=1000, nr
         point2_index = limb[1]
         point1 = joints_position[point1_index]
         point2 = joints_position[point2_index]
-        if len(point1)==3:                             # If there is confidence, weigh by confidence
+        if len(point1) == 3:                             # If there is confidence, weigh by confidence
             limb_weight = min(point1[2], point2[2])
-            if limb_weight==0:
+            if limb_weight == 0:
                 bb = bounding_box(canvas)
-                canvas_cropped = canvas[:,bb[2]:bb[3], :]
+                canvas_cropped = canvas[:, bb[2]:bb[3], :]
                 continue
         X = [point1[1], point2[1]]
         Y = [point1[0], point2[0]]
@@ -183,11 +191,12 @@ def joints2image(joints_position, colors, transparency=False, H=1000, W=1000, nr
         mY = np.mean(Y)
         length = ((X[0] - X[1]) ** 2 + (Y[0] - Y[1]) ** 2) ** 0.5
         alpha = math.degrees(math.atan2(X[0] - X[1], Y[0] - Y[1]))
-        polygon = cv2.ellipse2Poly((int(mY), int(mX)), (int(length / 2), stickwidth), int(alpha), 0, 360, 1)
+        polygon = cv2.ellipse2Poly((int(mY), int(mX)), (int(
+            length / 2), stickwidth), int(alpha), 0, 360, 1)
         cv2.fillConvexPoly(cur_canvas, polygon, colors_limbs[i])
         canvas = cv2.addWeighted(canvas, 0.4, cur_canvas, 0.6, 0)
         bb = bounding_box(canvas)
-        canvas_cropped = canvas[:,bb[2]:bb[3], :]
+        canvas_cropped = canvas[:, bb[2]:bb[3], :]
     canvas = canvas.astype(imtype)
     canvas_cropped = canvas_cropped.astype(imtype)
     if grayscale:
@@ -200,7 +209,20 @@ def joints2image(joints_position, colors, transparency=False, H=1000, W=1000, nr
     return [canvas, canvas_cropped]
 
 
-def motion2video(motion, save_path, colors, h=512, w=512, bg_color=(255, 255, 255), transparency=False, motion_tgt=None, fps=25, save_frame=False, grayscale=False, show_progress=True, as_array=False):
+def motion2video(
+    motion,
+    save_path,
+    colors, h=512,
+    w=512,
+    bg_color=(255, 255, 255),
+    transparency=False,
+    motion_tgt=None,
+    fps=25,
+    save_frame=False,
+    grayscale=False,
+    show_progress=True,
+    as_array=False
+):
     """
     Converts motion data to a video and optionally saves it.
 
@@ -233,11 +255,14 @@ def motion2video(motion, save_path, colors, h=512, w=512, bg_color=(255, 255, 25
         ensure_dir(frames_dir)
 
     iterator = range(vlen)
-    if show_progress: iterator = tqdm(iterator)
+    if show_progress:
+        iterator = tqdm(iterator)
     for i in iterator:
-        [img, img_cropped] = joints2image(motion[:, :, i], colors, transparency=transparency, bg_color=bg_color, H=h, W=w, nr_joints=nr_joints, grayscale=grayscale)
+        [img, img_cropped] = joints2image(motion[:, :, i], colors, transparency=transparency,
+                                          bg_color=bg_color, H=h, W=w, nr_joints=nr_joints, grayscale=grayscale)
         if motion_tgt is not None:
-            [img_tgt, img_tgt_cropped] = joints2image(motion_tgt[:, :, i], colors, transparency=transparency, bg_color=bg_color, H=h, W=w, nr_joints=nr_joints, grayscale=grayscale)
+            [img_tgt, img_tgt_cropped] = joints2image(
+                motion_tgt[:, :, i], colors, transparency=transparency, bg_color=bg_color, H=h, W=w, nr_joints=nr_joints, grayscale=grayscale)
             img_ori = img.copy()
             img = cv2.addWeighted(img_tgt, 0.3, img_ori, 0.7, 0)
             img_cropped = cv2.addWeighted(img_tgt, 0.3, img_ori, 0.7, 0)
@@ -245,15 +270,18 @@ def motion2video(motion, save_path, colors, h=512, w=512, bg_color=(255, 255, 25
             img_cropped = img_cropped[:, bb[2]:bb[3], :]
         if save_frame:
             save_image(img_cropped, os.path.join(frames_dir, "%04d.png" % i))
-        if as_array: out_array[i] = img
-        else: videowriter.append_data(img)
+        if as_array:
+            out_array[i] = img
+        else:
+            videowriter.append_data(img)
 
     if not as_array:
         videowriter.close()
 
     return out_array
 
-def motion2video_3d(motion, save_path, fps=25, keep_imgs = False):
+
+def motion2video_3d(motion, save_path, fps=25, keep_imgs=False):
     """
     Converts 3D motion data to a 3D video.
 
@@ -268,15 +296,16 @@ def motion2video_3d(motion, save_path, fps=25, keep_imgs = False):
     vlen = motion.shape[-1]
     save_name = save_path.split('.')[0]
     frames = []
-    joint_pairs = [[0, 1], [1, 2], [2, 3], [0, 4], [4, 5], [5, 6], [0, 7], [7, 8], [8, 9], [8, 11], [8, 14], [9, 10], [11, 12], [12, 13], [14, 15], [15, 16]]
+    joint_pairs = [[0, 1], [1, 2], [2, 3], [0, 4], [4, 5], [5, 6], [0, 7], [7, 8], [
+        8, 9], [8, 11], [8, 14], [9, 10], [11, 12], [12, 13], [14, 15], [15, 16]]
     joint_pairs_left = [[8, 11], [11, 12], [12, 13], [0, 4], [4, 5], [5, 6]]
     joint_pairs_right = [[8, 14], [14, 15], [15, 16], [0, 1], [1, 2], [2, 3]]
-    
+
     color_mid = "#00457E"
     color_left = "#02315E"
     color_right = "#2F70AF"
     for f in tqdm(range(vlen)):
-        j3d = motion[:,:,f]
+        j3d = motion[:, :, f]
         fig = plt.figure(0, figsize=(10, 10))
         ax = plt.axes(projection="3d")
         ax.set_xlim(-512, 0)
@@ -286,22 +315,27 @@ def motion2video_3d(motion, save_path, fps=25, keep_imgs = False):
         # ax.set_ylabel('Y')
         # ax.set_zlabel('Z')
         ax.view_init(elev=12., azim=80)
-        plt.tick_params(left = False, right = False , labelleft = False ,
-                        labelbottom = False, bottom = False)
+        plt.tick_params(left=False, right=False, labelleft=False,
+                        labelbottom=False, bottom=False)
         for i in range(len(joint_pairs)):
             limb = joint_pairs[i]
-            xs, ys, zs = [np.array([j3d[limb[0], j], j3d[limb[1], j]]) for j in range(3)]
+            xs, ys, zs = [np.array([j3d[limb[0], j], j3d[limb[1], j]])
+                          for j in range(3)]
             if joint_pairs[i] in joint_pairs_left:
-                ax.plot(-xs, -zs, -ys, color=color_left, lw=3, marker='o', markerfacecolor='w', markersize=3, markeredgewidth=2) # axis transformation for visualization
+                ax.plot(-xs, -zs, -ys, color=color_left, lw=3, marker='o', markerfacecolor='w',
+                        markersize=3, markeredgewidth=2)  # axis transformation for visualization
             elif joint_pairs[i] in joint_pairs_right:
-                ax.plot(-xs, -zs, -ys, color=color_right, lw=3, marker='o', markerfacecolor='w', markersize=3, markeredgewidth=2) # axis transformation for visualization
+                ax.plot(-xs, -zs, -ys, color=color_right, lw=3, marker='o', markerfacecolor='w',
+                        markersize=3, markeredgewidth=2)  # axis transformation for visualization
             else:
-                ax.plot(-xs, -zs, -ys, color=color_mid, lw=3, marker='o', markerfacecolor='w', markersize=3, markeredgewidth=2) # axis transformation for visualization
-            
+                ax.plot(-xs, -zs, -ys, color=color_mid, lw=3, marker='o', markerfacecolor='w',
+                        markersize=3, markeredgewidth=2)  # axis transformation for visualization
+
         frame_vis = get_img_from_fig(fig)
         videowriter.append_data(frame_vis)
         plt.close()
     videowriter.close()
+
 
 def save_image(image_numpy, image_path):
     """
@@ -313,6 +347,7 @@ def save_image(image_numpy, image_path):
     """
     image_pil = Image.fromarray(image_numpy)
     image_pil.save(image_path)
+
 
 def bounding_box(img):
     """

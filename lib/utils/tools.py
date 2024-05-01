@@ -1,8 +1,8 @@
-import numpy as np
-import os, sys
+import os
 import pickle
 
 ROOT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')
+
 
 def ensure_dir(path):
     """
@@ -12,9 +12,10 @@ def ensure_dir(path):
     """
     if not os.path.exists(path):
         os.makedirs(path)
-        
+
+
 def read_pkl(data_url):
-    file = open(data_url,'rb')
+    file = open(data_url, 'rb')
     content = pickle.load(file)
     file.close()
     return content
