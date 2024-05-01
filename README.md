@@ -43,7 +43,7 @@ PerfectRep is a 3D pose estimation model tailored specifically for powerlifting 
 
 ## Training Instructions
 
-1. Prepare your dataset in the appropriate format. Ensure it includes labeled data for powerlifting movements.
+1. Prepare your dataset in the appropriate format. Have required preprocessed data in the correct directory. See [Data Preprocessing](#data-preprocessing) for more info
 
 2. Train the model using the provided training script:
 
@@ -68,6 +68,21 @@ PerfectRep is a 3D pose estimation model tailored specifically for powerlifting 
    ```bash
    python infer.py --video /path/to/video.mp4
    ```
+
+## Data Preprocessing
+
+For pretraing we use the Human3.6m data set and the Fit3D data set is used for fintuning 3D pose and classification. These data sets must be preprocessed before being used for training.
+
+### Download
+
+> Note that the preprocessed data is only intended for reproducing our results more easily. If you want to use the dataset, please register to the [Human3.6m website](http://vision.imar.ro/human3.6m/) and [Fit3D website](https://fit3d.imar.ro/home) and download the dataset in its original format.
+
+| Dataset   | Description                                                                | Size    | Download Link                                                                                               |
+| --------- | -------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------- |
+| Human3.6m | Human3.6m is a large-scale dataset for human motion capture.               | 1.03 GB | [Download Human3.6m](https://drive.google.com/file/d/1Ea-DFRqAJwQuAI4TI3p6NNfkUouvH5GQ/view?usp=drive_link) |
+| Fit3D     | Fit3D is a dataset for 3D human-interpretable models for fitness training. | 1.96 GB | [Download Fit3D](https://drive.google.com/file/d/1xt_NAGvvu4jWuIBYGsgHoboDK4K_w2VO/view?usp=drive_link)     |
+
+Once downloaded unzip both files into `data/motion3d`
 
 ## Documentation
 
