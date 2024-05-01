@@ -1,6 +1,6 @@
-import os
 import numpy as np
 import copy
+
 
 def crop_scale(motion, scale_range=[1, 1]):
     '''
@@ -14,23 +14,25 @@ def crop_scale(motion, scale_range=[1, 1]):
         numpy array: Normalized motion data with shape (M, T, 17, 3).
     '''
     result = copy.deepcopy(motion)
-    valid_coords = motion[motion[..., 2]!=0][:,:2]
+    valid_coords = motion[motion[..., 2] != 0][:, :2]
     if len(valid_coords) < 4:
         return np.zeros(motion.shape)
-    xmin = min(valid_coords[:,0])
-    xmax = max(valid_coords[:,0])
-    ymin = min(valid_coords[:,1])
-    ymax = max(valid_coords[:,1])
-    ratio = np.random.uniform(low=scale_range[0], high=scale_range[1], size=1)[0]
+    xmin = min(valid_coords[:, 0])
+    xmax = max(valid_coords[:, 0])
+    ymin = min(valid_coords[:, 1])
+    ymax = max(valid_coords[:, 1])
+    ratio = np.random.uniform(
+        low=scale_range[0], high=scale_range[1], size=1)[0]
     scale = max(xmax-xmin, ymax-ymin) * ratio
-    if scale==0:
+    if scale == 0:
         return np.zeros(motion.shape)
     xs = (xmin+xmax-scale) / 2
     ys = (ymin+ymax-scale) / 2
-    result[...,:2] = (motion[..., :2]- [xs,ys]) / scale
-    result[...,:2] = (result[..., :2] - 0.5) * 2
+    result[..., :2] = (motion[..., :2] - [xs, ys]) / scale
+    result[..., :2] = (result[..., :2] - 0.5) * 2
     result = np.clip(result, -1, 1)
     return result
+
 
 def crop_scale_3d(motion, scale_range=[1, 1]):
     '''
@@ -45,21 +47,23 @@ def crop_scale_3d(motion, scale_range=[1, 1]):
         numpy array: Normalized 3D motion data with shape (T, 17, 3).
     '''
     result = copy.deepcopy(motion)
-    result[:,:,2] = result[:,:,2] - result[0,0,2]
-    xmin = np.min(motion[...,0])
-    xmax = np.max(motion[...,0])
-    ymin = np.min(motion[...,1])
-    ymax = np.max(motion[...,1])
-    ratio = np.random.uniform(low=scale_range[0], high=scale_range[1], size=1)[0]
+    result[:, :, 2] = result[:, :, 2] - result[0, 0, 2]
+    xmin = np.min(motion[..., 0])
+    xmax = np.max(motion[..., 0])
+    ymin = np.min(motion[..., 1])
+    ymax = np.max(motion[..., 1])
+    ratio = np.random.uniform(
+        low=scale_range[0], high=scale_range[1], size=1)[0]
     scale = max(xmax-xmin, ymax-ymin) / ratio
-    if scale==0:
+    if scale == 0:
         return np.zeros(motion.shape)
     xs = (xmin+xmax-scale) / 2
     ys = (ymin+ymax-scale) / 2
-    result[...,:2] = (motion[..., :2]- [xs,ys]) / scale
-    result[...,2] = result[...,2] / scale
+    result[..., :2] = (motion[..., :2] - [xs, ys]) / scale
+    result[..., 2] = result[..., 2] / scale
     result = (result - 0.5) * 2
     return result
+
 
 def flip_data(data):
     """
@@ -71,13 +75,16 @@ def flip_data(data):
     left_joints = [4, 5, 6, 11, 12, 13]
     right_joints = [1, 2, 3, 14, 15, 16]
     flipped_data = copy.deepcopy(data)
-    flipped_data[..., 0] *= -1                                               # flip x of all joints
-    flipped_data[..., left_joints+right_joints, :] = flipped_data[..., right_joints+left_joints, :]
+    # flip x of all joints
+    flipped_data[..., 0] *= -1
+    flipped_data[..., left_joints+right_joints,
+                 :] = flipped_data[..., right_joints+left_joints, :]
     return flipped_data
+
 
 def resample(ori_len, target_len, replay=False, randomness=True):
     """
-    Resamples a clip to a desired length. 
+    Resamples a clip to a desired length.
     This is either done by replaying the clip or linearly spacing the clip in the desired sequence length
 
     Args:
@@ -94,7 +101,8 @@ def resample(ori_len, target_len, replay=False, randomness=True):
             return np.array(range(target_len)) % ori_len  # Replay padding
     else:
         if randomness:
-            even = np.linspace(0, ori_len, num=target_len, endpoint=False) # Sequence of randomly spaced values in range of target length
+            # Sequence of randomly spaced values in range of target length
+            even = np.linspace(0, ori_len, num=target_len, endpoint=False)
             if ori_len < target_len:
                 low = np.floor(even)
                 high = np.ceil(even)
@@ -103,10 +111,14 @@ def resample(ori_len, target_len, replay=False, randomness=True):
             else:
                 interval = even[1] - even[0]
                 result = np.random.random(even.shape)*interval + even
-            result = np.clip(result, a_min=0, a_max=ori_len-1).astype(np.uint32) # Clip so values fall in length of original clip
+            # Clip so values fall in length of original clip
+            result = np.clip(result, a_min=0, a_max=ori_len -
+                             1).astype(np.uint32)
         else:
-            result = np.linspace(0, ori_len, num=target_len, endpoint=False, dtype=int)
+            result = np.linspace(0, ori_len, num=target_len,
+                                 endpoint=False, dtype=int)
         return result
+
 
 def split_clips(vid_list, n_frames, data_stride):
     """
@@ -130,18 +142,23 @@ def split_clips(vid_list, n_frames, data_stride):
         i += 1
         if i - st == n_frames:
             result.append(range(st, i))  # Add the clip to the result list
-            saved.add(vid_list[i - 1])  # Add the last frame of the clip to the saved set
+            # Add the last frame of the clip to the saved set
+            saved.add(vid_list[i - 1])
             st = st + data_stride  # Update the starting index for the next clip
             n_clips += 1
 
         if i == len(vid_list):
             break
 
-        if vid_list[i] != vid_list[i - 1]: # Check if current frame is from a different clip
-            if not (vid_list[i - 1] in saved):  # If the previous frame hasn't been saved yet
-                resampled = resample(i - st, n_frames) + st  # Resample the clip
-                result.append(resampled)  # Add the resampled clip to the result list
-                saved.add(vid_list[i - 1])  # Add the previous frame to the saved set
+        if vid_list[i] != vid_list[i - 1]:  # Check if current frame is from a different clip
+            # If the previous frame hasn't been saved yet
+            if not (vid_list[i - 1] in saved):
+                resampled = resample(i - st, n_frames) + \
+                    st  # Resample the clip
+                # Add the resampled clip to the result list
+                result.append(resampled)
+                # Add the previous frame to the saved set
+                saved.add(vid_list[i - 1])
             st = i
 
     return result
