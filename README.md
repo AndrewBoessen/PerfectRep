@@ -71,7 +71,7 @@ PerfectRep is a 3D pose estimation model tailored specifically for powerlifting 
 
 ## Data Preprocessing
 
-For pretraing we use the Human3.6m data set and the Fit3D data set is used for fintuning 3D pose and classification. These data sets must be preprocessed before being used for training.
+For pretraing we use the Human3.6m data set and the Fit3D data set is used for finetuning 3D pose and classification. These data sets must be preprocessed before being used for training.
 
 ### Download
 
