@@ -23,6 +23,44 @@ class AttentionType(Enum):
     SPATIAL = 2
     TEMPORAL = 3
 
+class MLP(nn.Module):
+    """
+    A simple Multi-Layer Perceptron (MLP) neural network model.
+    Used after attention block to get motion encoding
+
+    Args:
+        in_features (int): Number of input features.
+        hidden_features (int, optional): Number of neurons in the hidden layer.
+            If not provided, defaults to the same number as input features.
+        out_features (int, optional): Number of output features.
+            If not provided, defaults to the same number as input features.
+        act_layer (torch.nn.Module, optional): Activation function to be used in hidden layer.
+            Defaults to GELU activation function.
+        drop (float, optional): Dropout probability. Default is 0, indicating no dropout.
+
+    Attributes:
+        fc1 (torch.nn.Linear): Input layer.
+        act (torch.nn.Module): Activation function.
+        fc2 (torch.nn.Linear): Hidden layer.
+        drop (torch.nn.Dropout): Dropout layer applied after each fully connected layer.
+    """
+    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
+        super().__init__()
+        out_features = out_features or in_features
+        hidden_features = hidden_features or in_features
+        self.fc1 = nn.Linear(in_features, hidden_features) # Input layer
+        self.act = act_layer() # GELU activation
+        self.fc2 = nn.Linear(hidden_features, out_features) # First hidden layer
+        self.drop = nn.Dropout(drop) # Neuron dropout. Applied after each layer
+
+    def forward(self, x):
+        x = self.fc1(x) # Input layer
+        x = self.act(x)
+        x = self.drop(x)
+        x = self.fc2(x) # Hidden layer
+        x = self.drop(x)
+        return x
+
 class Attention(nn.Module):
     """
     Multi-head self-attention mechanism.
