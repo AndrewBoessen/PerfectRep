@@ -79,8 +79,8 @@ For pretraing we use the Human3.6m data set and the Fit3D data set is used for f
 
 | Dataset   | Description                                                                | Size    | Download Link                                                                                               |
 | --------- | -------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------- |
-| Human3.6m | Human3.6m is a large-scale dataset for human motion capture.               | 1.03 GB | [Download Human3.6m](https://drive.google.com/file/d/1Ea-DFRqAJwQuAI4TI3p6NNfkUouvH5GQ/view?usp=drive_link) |
-| Fit3D     | Fit3D is a dataset for 3D human-interpretable models for fitness training. | 1.96 GB | [Download Fit3D](https://drive.google.com/file/d/1xt_NAGvvu4jWuIBYGsgHoboDK4K_w2VO/view?usp=drive_link)     |
+| Human3.6m | Human3.6m is a large-scale dataset for human motion capture.               | 1.03 GB | [Download Human3.6m](https://drive.google.com/file/d/1HileW1X3WXwgwueeNWzvIKGvnwlejVhZ/view?usp=drive_link) |
+| Fit3D     | Fit3D is a dataset for 3D human-interpretable models for fitness training. | 1.96 GB | [Download Fit3D](https://drive.google.com/file/d/1B8BT67Q_ZLbT638cbT3msoIYWUwYWzxz/view?usp=drive_link)     |
 
 Once downloaded unzip both files into `data/motion3d`
 
