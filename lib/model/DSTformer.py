@@ -322,6 +322,54 @@ class Block(nn.Module):
             return x
 
 class DSTformer(nn.Module):
+    """
+    Dual-stream transformer for spatiotemporal feature extraction and motion encoding.
+
+    Args:
+        dim_in (int, optional): Dimensionality of the input. Default is 3.
+        dim_out (int, optional): Dimensionality of the output. Default is 3.
+        dim_feat (int, optional): Dimensionality of the feature embeddings. Default is 256.
+        dim_rep (int, optional): Dimensionality of the representation layer. Default is 512.
+        depth (int, optional): Number of transformer blocks. Default is 5.
+        num_heads (int, optional): Number of attention heads. Default is 8.
+        mlp_ratio (float, optional): Ratio of hidden dimension to input dimension for the MLP. Default is 4.0.
+        num_joints (int, optional): Number of joints. Default is 17.
+        maxlen (int, optional): Maximum sequence length. Default is 243.
+        qkv_bias (bool, optional): If True, include bias terms in the calculation of Q, K, and V. Default is True.
+        qk_scale (float, optional): Scale factor for Q and K. Default is None.
+        drop_rate (float, optional): Dropout rate. Default is 0.0.
+        attn_drop_rate (float, optional): Dropout rate for attention weights. Default is 0.0.
+        drop_path_rate (float, optional): Drop path rate. Default is 0.0.
+        norm_layer (torch.nn.Module, optional): Normalization layer. Default is nn.LayerNorm.
+        att_fuse (bool, optional): If True, fuse spatial and temporal attention with learned weights. Default is True.
+
+    Attributes:
+        dim_out (int): Dimensionality of the output.
+        dim_feat (int): Dimensionality of the feature embeddings.
+        joints_embed (nn.Linear): Linear layer for input embeddings.
+        pos_drop (nn.Dropout): Dropout layer for positional encoding.
+        blocks_st (nn.ModuleList): List of spatial transformer blocks.
+        blocks_ts (nn.ModuleList): List of temporal transformer blocks.
+        norm (nn.LayerNorm): Layer normalization.
+        pre_logits (nn.Sequential or nn.Identity): Fully connected layer for motion encoding.
+        head (nn.Linear or nn.Identity): Linear layer for final output transformation.
+        temp_embed (nn.Parameter): Temporal embedding.
+        pos_embed (nn.Parameter): Spatial embedding.
+        att_fuse (bool): Whether to fuse spatial and temporal attention.
+        ts_attn (nn.ModuleList, optional): List of linear layers for attention fusion.
+
+    Methods:
+        _init_weights(m):
+            Initialize the weights of the given module.
+        get_classifier():
+            Return the head classifier.
+        reset_classifier(dim_out, global_pool=''):
+            Reset the head classifier with new output dimensions.
+        forward(x, return_rep=False):
+            Forward pass through the transformer.
+        get_representation(x):
+            Get the representation layer output.
+    """
     def __init__(self, dim_in=3, dim_out=3, dim_feat=256, dim_rep=512,
                  depth=5, num_heads=8, mlp_ratio=4, 
                  num_joints=17, maxlen=243, 
@@ -330,8 +378,110 @@ class DSTformer(nn.Module):
         self.dim_out = dim_out
         self.dim_feat = dim_feat
         self.joints_embed = nn.Linear(dim_in, dim_feat) # Embeddings in feature space
+        
+        # Apply dropout to positional encoding
+        self.pos_drop = nn.Dropout(p=drop_rate)
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]  # stochastic depth decay rule
+        
+        # Spatial Steam Block
+        self.blocks_st = nn.ModuleList([
+            Block(
+                dim=dim_feat, num_heads=num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale,
+                drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[i], norm_layer=norm_layer, 
+                st_mode="stage_st")
+            for i in range(depth)])
+        # Temporal Stream Block
+        self.blocks_ts = nn.ModuleList([
+            Block(
+                dim=dim_feat, num_heads=num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale,
+                drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[i], norm_layer=norm_layer, 
+                st_mode="stage_ts")
+            for i in range(depth)])
+        self.norm = norm_layer(dim_feat) # Layer Normalization
+        
+        # Fully Connected layer to transform from feature embedding to motion encoding
+        if dim_rep:
+            self.pre_logits = nn.Sequential(OrderedDict([
+                ('fc', nn.Linear(dim_feat, dim_rep)),
+                ('act', nn.Tanh())
+            ]))
+        else:
+            self.pre_logits = nn.Identity()
+        # Transformation from motion encoding to output dimension
+        self.head = nn.Linear(dim_rep, dim_out) if dim_out > 0 else nn.Identity()
+
         self.temp_embed = nn.Parameter(torch.zeros(1, maxlen, 1, dim_feat)) # Temporal embedding
         self.pos_embed = nn.Parameter(torch.zeros(1, num_joints, dim_feat)) # Spatial embedding
         # Fill embedding matrices weights from normal distribution
         trunc_normal_(self.temp_embed, std=.02)
         trunc_normal_(self.pos_embed, std=.02)
+
+        self.apply(self._init_weights) # Fill weights with one and bias zero
+
+        self.att_fuse = att_fuse
+        if self.att_fuse:
+            self.ts_attn = nn.ModuleList([nn.Linear(dim_feat*2, 2) for i in range(depth)])
+            for i in range(depth):
+                self.ts_attn[i].weight.data.fill_(0)
+                self.ts_attn[i].bias.data.fill_(0.5)
+        
+        def _init_weights(self, m):
+            """
+            Initialize the weights of the given module.
+        
+            This function initializes the weights and biases of the given module `m` based on its type:
+            - For `nn.Linear` layers, the weights are initialized using a truncated normal distribution with a standard deviation of 0.02, and biases are set to zero if they exist.
+            - For `nn.LayerNorm` layers, both weights and biases are set to one and zero respectively.
+        
+            Args:
+            m : torch.nn.Module
+                The module to initialize. This should be an instance of either `nn.Linear` or `nn.LayerNorm`.
+            """
+            if isinstance(m, nn.Linear):
+                trunc_normal_(m.weight, std=.02)
+                if isinstance(m, nn.Linear) and m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.LayerNorm):
+                nn.init.constant_(m.bias, 0)
+                nn.init.constant_(m.weight, 1.0)
+        
+        def get_classifier(self):
+            return self.head
+
+        def reset_classifier(self, dim_out, global_pool=''):
+            self.dim_out = dim_out
+            self.head = nn.Linear(self.dim_feat, dim_out) if dim_out > 0 else nn.Identity()
+        
+        def forward(self, x, return_rep=False):   
+            B, F, J, C = x.shape # Batch : Frame : Joint : Embedding Space
+            x = x.reshape(-1, J, C) # Concat all batches
+            BF = x.shape[0]
+            x = self.joints_embed(x)
+            x = x + self.pos_embed # Add positional embedding
+            _, J, C = x.shape
+            x = x.reshape(-1, F, J, C) + self.temp_embed[:,:F,:,:] # Temportal encoding
+            x = x.reshape(BF, J, C)
+            x = self.pos_drop(x)
+            alphas = [] # Fuse alpha vals
+            for idx, (blk_st, blk_ts) in enumerate(zip(self.blocks_st, self.blocks_ts)):
+                x_st = blk_st(x, F)
+                x_ts = blk_ts(x, F)
+                if self.att_fuse:
+                    att = self.ts_attn[idx]
+                    alpha = torch.cat([x_st, x_ts], dim=-1)
+                    BF, J = alpha.shape[:2]
+                    alpha = att(alpha)
+                    alpha = alpha.softmax(dim=-1)
+                    x = x_st * alpha[:,:,0:1] + x_ts * alpha[:,:,1:2]
+                else:
+                    x = (x_st + x_ts)*0.5 # Assign equal weight is fuse not applied
+            x = self.norm(x)
+            x = x.reshape(B, F, J, -1)
+            x = self.pre_logits(x) # [B, F, J, dim_feat]
+            if return_rep:
+                return x
+            x = self.head(x)
+            return x
+
+        def get_representation(self, x):
+            return self.forward(x, return_rep=True)
