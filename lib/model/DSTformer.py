@@ -330,8 +330,76 @@ class DSTformer(nn.Module):
         self.dim_out = dim_out
         self.dim_feat = dim_feat
         self.joints_embed = nn.Linear(dim_in, dim_feat) # Embeddings in feature space
+        
+        # Apply dropout to positional encoding
+        self.pos_drop = nn.Dropout(p=drop_rate)
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]  # stochastic depth decay rule
+        
+        # Spatial Steam Block
+        self.blocks_st = nn.ModuleList([
+            Block(
+                dim=dim_feat, num_heads=num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale,
+                drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[i], norm_layer=norm_layer, 
+                st_mode="stage_st")
+            for i in range(depth)])
+        # Temporal Stream Block
+        self.blocks_ts = nn.ModuleList([
+            Block(
+                dim=dim_feat, num_heads=num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale,
+                drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[i], norm_layer=norm_layer, 
+                st_mode="stage_ts")
+            for i in range(depth)])
+        self.norm = norm_layer(dim_feat) # Layer Normalization
+        
+        # Fully Connected layer to transform from feature embedding to motion encoding
+        if dim_rep:
+            self.pre_logits = nn.Sequential(OrderedDict([
+                ('fc', nn.Linear(dim_feat, dim_rep)),
+                ('act', nn.Tanh())
+            ]))
+        else:
+            self.pre_logits = nn.Identity()
+        # Transformation from motion encoding to output dimension
+        self.head = nn.Linear(dim_rep, dim_out) if dim_out > 0 else nn.Identity()
+
         self.temp_embed = nn.Parameter(torch.zeros(1, maxlen, 1, dim_feat)) # Temporal embedding
         self.pos_embed = nn.Parameter(torch.zeros(1, num_joints, dim_feat)) # Spatial embedding
         # Fill embedding matrices weights from normal distribution
         trunc_normal_(self.temp_embed, std=.02)
         trunc_normal_(self.pos_embed, std=.02)
+
+        self.apply(self._init_weights) # Fill weights with one and bias zero
+
+        self.att_fuse = att_fuse
+        if self.att_fuse:
+            self.ts_attn = nn.ModuleList([nn.Linear(dim_feat*2, 2) for i in range(depth)])
+            for i in range(depth):
+                self.ts_attn[i].weight.data.fill_(0)
+                self.ts_attn[i].bias.data.fill_(0.5)
+        
+        def _init_weights(self, m):
+            """
+            Initialize the weights of the given module.
+        
+            This function initializes the weights and biases of the given module `m` based on its type:
+            - For `nn.Linear` layers, the weights are initialized using a truncated normal distribution with a standard deviation of 0.02, and biases are set to zero if they exist.
+            - For `nn.LayerNorm` layers, both weights and biases are set to one and zero respectively.
+        
+            Args:
+            m : torch.nn.Module
+                The module to initialize. This should be an instance of either `nn.Linear` or `nn.LayerNorm`.
+            """
+            if isinstance(m, nn.Linear):
+                trunc_normal_(m.weight, std=.02)
+                if isinstance(m, nn.Linear) and m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.LayerNorm):
+                nn.init.constant_(m.bias, 0)
+                nn.init.constant_(m.weight, 1.0)
+        
+        def get_classifier(self):
+            return self.head
+
+        def reset_classifier(self, dim_out, global_pool=''):
+            self.dim_out = dim_out
+            self.head = nn.Linear(self.dim_feat, dim_out) if dim_out > 0 else nn.Identity()
