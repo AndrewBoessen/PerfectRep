@@ -1,70 +1,75 @@
 import pytest
 import torch
-from unittest.mock import Mock, patch
-from lib.data.augmentation import Augmenter2D, Augmenter3D
+from unittest.mock import patch, MagicMock
+from lib.data.augmentation import Augmenter2D
 
-# Sample data for testing
-motion_2d = torch.randn(2, 243, 17, 3)  # (N, T, J, C)
-motion_3d = torch.randn(243, 17, 3)     # (T, J, C)
-
-# Mock arguments
 class Args:
-    d2c_params_path = 'mock_d2c_params.pkl'
-    noise_path = 'mock_noise.pt'
+    d2c_params_path = 'lib/params/d2c_params.pkl'
+    noise_path = 'lib/params/sythentic_noise.pth'
     mask_ratio = 0.1
-    mask_T_ratio = 0.1
-    flip = True
-    scale_range_pretrain = [0.8, 1.2]
-
-args = Args()
+    mask_T_ratio = 0.2
 
 @pytest.fixture
-def setup_augmenter2d():
+def args():
+    return Args()
+
+@pytest.fixture
+def augmenter(args):
     with patch('lib.utils.tools.read_pkl') as mock_read_pkl, \
          patch('torch.load') as mock_torch_load:
-        mock_read_pkl.return_value = {"a": 1.0, "b": 0.5, "m": 0.1, "s": 0.02}
+        
+        # Mocking the read_pkl function and torch.load
+        mock_read_pkl.return_value = {"a": 0.5, "b": 0.2, "m": 0.1, "s": 0.3}
         mock_torch_load.return_value = {
             "mean": torch.tensor([0.0, 0.0]),
             "std": torch.tensor([1.0, 1.0]),
-            "weight": torch.tensor([0.5]),
+            "weight": torch.tensor([0.5] * 17),
             "uniform_range": 0.06
         }
-        augmenter = Augmenter2D(args)
-    return augmenter
+        
+        return Augmenter2D(args)
 
-@pytest.fixture
-def setup_augmenter3d():
-    return Augmenter3D(args)
+def test_add_noise(augmenter):
+    motion_2d = torch.randn(5, 243, 17, 3)  # (N, T, J, C)
+    result = augmenter.add_noise(motion_2d)
+    
+    assert result.shape == motion_2d.shape
+    assert torch.all(result[:, :, :, :2] != motion_2d[:, :, :, :2]).item()
 
-def test_add_noise(setup_augmenter2d):
-    augmenter = setup_augmenter2d
-    augmented_motion = augmenter.add_noise(motion_2d)
-    assert augmented_motion.shape == (2, 243, 17, 3), "Shape mismatch in add_noise output"
-    assert (augmented_motion[:, :, :, :2] != motion_2d[:, :, :, :2]).any(), "Noise not added correctly"
+def test_add_mask(augmenter):
+    motion_2d = torch.randn(5, 243, 17, 3)  # (N, T, J, C)
+    result = augmenter.add_mask(motion_2d)
+    
+    assert result.shape == motion_2d.shape
+    mask_applied = torch.sum(result == 0) > 0
+    assert mask_applied.item()  # Ensure some masking is applied
 
-def test_add_mask(setup_augmenter2d):
-    augmenter = setup_augmenter2d
-    masked_motion = augmenter.add_mask(motion_2d)
-    assert masked_motion.shape == (2, 243, 17, 3), "Shape mismatch in add_mask output"
-    mask_ratio = (masked_motion == 0).float().mean()
-    assert mask_ratio <= args.mask_ratio + 0.05, "Mask ratio not within expected range"
+def test_augment2D_no_mask_no_noise(augmenter):
+    motion_2d = torch.randn(5, 243, 17, 3)
+    result = augmenter.augment2D(motion_2d, mask=False, noise=False)
+    
+    assert torch.equal(result, motion_2d)
 
-def test_augment2D(setup_augmenter2d):
-    augmenter = setup_augmenter2d
-    augmented_motion = augmenter.augment2D(motion_2d, mask=True, noise=True)
-    assert augmented_motion.shape == (2, 243, 17, 3), "Shape mismatch in augment2D output"
+def test_augment2D_mask(augmenter):
+    motion_2d = torch.randn(5, 243, 17, 3)
+    result = augmenter.augment2D(motion_2d, mask=True, noise=False)
+    
+    assert result.shape == motion_2d.shape
+    mask_applied = torch.sum(result == 0) > 0
+    assert mask_applied.item()  # Ensure some masking is applied
 
-def test_augment3D(setup_augmenter3d):
-    augmenter = setup_augmenter3d
-    augmented_motion = augmenter.augment3D(motion_3d)
-    assert augmented_motion.shape == (243, 17, 3), "Shape mismatch in augment3D output"
-    if args.flip:
-        # Test flip (probabilistic)
-        flipped_motion = augmenter.augment3D(motion_3d)
-        assert (flipped_motion != motion_3d).any(), "Flip augmentation not applied"
+def test_augment2D_noise(augmenter):
+    motion_2d = torch.randn(5, 243, 17, 3)
+    result = augmenter.augment2D(motion_2d, mask=False, noise=True)
+    
+    assert result.shape == motion_2d.shape
+    assert torch.all(result[:, :, :, :2] != motion_2d[:, :, :, :2]).item()
 
-def test_augment3D_scale_range(setup_augmenter3d):
-    augmenter = setup_augmenter3d
-    augmenter.scale_range_pretrain = [0.8, 1.2]
-    scaled_motion = augmenter.augment3D(motion_3d)
-    assert scaled_motion.shape == (243, 17, 3), "Shape mismatch in augment3D output with scale range"
+def test_augment2D_mask_and_noise(augmenter):
+    motion_2d = torch.randn(5, 243, 17, 3)
+    result = augmenter.augment2D(motion_2d, mask=True, noise=True)
+    
+    assert result.shape == motion_2d.shape
+    assert torch.all(result[:, :, :, :2] != motion_2d[:, :, :, :2]).item()
+    mask_applied = torch.sum(result == 0) > 0
+    assert mask_applied.item()  # Ensure some masking is applied

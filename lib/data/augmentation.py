@@ -1,7 +1,7 @@
 import random
 import torch
 from lib.utils.tools import read_pkl
-from lib.utils.utils_data import flip_data, crop_scale_3d
+from lib.utils.data import flip_data, crop_scale_3d
 
 
 class Augmenter2D(object):
