@@ -322,6 +322,54 @@ class Block(nn.Module):
             return x
 
 class DSTformer(nn.Module):
+    """
+    Dual-stream transformer for spatiotemporal feature extraction and motion encoding.
+
+    Args:
+        dim_in (int, optional): Dimensionality of the input. Default is 3.
+        dim_out (int, optional): Dimensionality of the output. Default is 3.
+        dim_feat (int, optional): Dimensionality of the feature embeddings. Default is 256.
+        dim_rep (int, optional): Dimensionality of the representation layer. Default is 512.
+        depth (int, optional): Number of transformer blocks. Default is 5.
+        num_heads (int, optional): Number of attention heads. Default is 8.
+        mlp_ratio (float, optional): Ratio of hidden dimension to input dimension for the MLP. Default is 4.0.
+        num_joints (int, optional): Number of joints. Default is 17.
+        maxlen (int, optional): Maximum sequence length. Default is 243.
+        qkv_bias (bool, optional): If True, include bias terms in the calculation of Q, K, and V. Default is True.
+        qk_scale (float, optional): Scale factor for Q and K. Default is None.
+        drop_rate (float, optional): Dropout rate. Default is 0.0.
+        attn_drop_rate (float, optional): Dropout rate for attention weights. Default is 0.0.
+        drop_path_rate (float, optional): Drop path rate. Default is 0.0.
+        norm_layer (torch.nn.Module, optional): Normalization layer. Default is nn.LayerNorm.
+        att_fuse (bool, optional): If True, fuse spatial and temporal attention with learned weights. Default is True.
+
+    Attributes:
+        dim_out (int): Dimensionality of the output.
+        dim_feat (int): Dimensionality of the feature embeddings.
+        joints_embed (nn.Linear): Linear layer for input embeddings.
+        pos_drop (nn.Dropout): Dropout layer for positional encoding.
+        blocks_st (nn.ModuleList): List of spatial transformer blocks.
+        blocks_ts (nn.ModuleList): List of temporal transformer blocks.
+        norm (nn.LayerNorm): Layer normalization.
+        pre_logits (nn.Sequential or nn.Identity): Fully connected layer for motion encoding.
+        head (nn.Linear or nn.Identity): Linear layer for final output transformation.
+        temp_embed (nn.Parameter): Temporal embedding.
+        pos_embed (nn.Parameter): Spatial embedding.
+        att_fuse (bool): Whether to fuse spatial and temporal attention.
+        ts_attn (nn.ModuleList, optional): List of linear layers for attention fusion.
+
+    Methods:
+        _init_weights(m):
+            Initialize the weights of the given module.
+        get_classifier():
+            Return the head classifier.
+        reset_classifier(dim_out, global_pool=''):
+            Reset the head classifier with new output dimensions.
+        forward(x, return_rep=False):
+            Forward pass through the transformer.
+        get_representation(x):
+            Get the representation layer output.
+    """
     def __init__(self, dim_in=3, dim_out=3, dim_feat=256, dim_rep=512,
                  depth=5, num_heads=8, mlp_ratio=4, 
                  num_joints=17, maxlen=243, 
@@ -403,3 +451,37 @@ class DSTformer(nn.Module):
         def reset_classifier(self, dim_out, global_pool=''):
             self.dim_out = dim_out
             self.head = nn.Linear(self.dim_feat, dim_out) if dim_out > 0 else nn.Identity()
+        
+        def forward(self, x, return_rep=False):   
+            B, F, J, C = x.shape # Batch : Frame : Joint : Embedding Space
+            x = x.reshape(-1, J, C) # Concat all batches
+            BF = x.shape[0]
+            x = self.joints_embed(x)
+            x = x + self.pos_embed # Add positional embedding
+            _, J, C = x.shape
+            x = x.reshape(-1, F, J, C) + self.temp_embed[:,:F,:,:] # Temportal encoding
+            x = x.reshape(BF, J, C)
+            x = self.pos_drop(x)
+            alphas = [] # Fuse alpha vals
+            for idx, (blk_st, blk_ts) in enumerate(zip(self.blocks_st, self.blocks_ts)):
+                x_st = blk_st(x, F)
+                x_ts = blk_ts(x, F)
+                if self.att_fuse:
+                    att = self.ts_attn[idx]
+                    alpha = torch.cat([x_st, x_ts], dim=-1)
+                    BF, J = alpha.shape[:2]
+                    alpha = att(alpha)
+                    alpha = alpha.softmax(dim=-1)
+                    x = x_st * alpha[:,:,0:1] + x_ts * alpha[:,:,1:2]
+                else:
+                    x = (x_st + x_ts)*0.5 # Assign equal weight is fuse not applied
+            x = self.norm(x)
+            x = x.reshape(B, F, J, -1)
+            x = self.pre_logits(x) # [B, F, J, dim_feat]
+            if return_rep:
+                return x
+            x = self.head(x)
+            return x
+
+        def get_representation(self, x):
+            return self.forward(x, return_rep=True)
