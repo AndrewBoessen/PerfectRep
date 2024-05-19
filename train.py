@@ -35,20 +35,20 @@ def set_random_seed(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-def save_checkpoint(cp_path, epoch, lr, optimizer, model_pos, min_loss):
+def save_checkpoint(chk_path, epoch, lr, optimizer, model_pos, min_loss):
     '''
     Save checkpoint of training state for current epoch.
 
     Args:
-        cp_path: path to save checkpoint binary to
+        chk_path: path to save checkpoint binary to
         epoch: current epoch to save
         lr: learning rate
         optimzer: optimizer used for training
         model_pos: model state to save
         min_loss: minimum loss acheived during training
     '''
-    assert os.path.exists(cp_path), "Error saving checkpoint: File %s path does not exist!" % cp_path
-    print('Saving checkpoint to', cp_path)
+    assert os.path.exists(chk_path), "Error saving checkpoint: File %s path does not exist!" % cp_path
+    print('Saving checkpoint to', chk_path)
     torch.save({
         'epoch': epoch + 1,
         'lr': lr,
