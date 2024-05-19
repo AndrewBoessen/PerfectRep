@@ -17,6 +17,15 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
+SEED=0
+LR=0.0005
+CTXT_LEN=243 # 10 seconds of video at 24.3 fps
+FEAT_DIM=256
+MLP_RATIO=4
+DEPTH=4
+DIM_REP=512
+NUM_HEADS=8
+
 def parse_args():
     parser = argparse.ArgumentParser(
         prog='PerfectRep Train',
