@@ -2,8 +2,8 @@
 
 import numpy as np
 import random
-from lib.utils.tools import read_pkl
-from lib.utils.data import split_clips
+from src.utils.tools import read_pkl
+from src.utils.data import split_clips
 random.seed(0)
 
 

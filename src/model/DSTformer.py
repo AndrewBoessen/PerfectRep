@@ -8,7 +8,7 @@ from collections import OrderedDict
 from functools import partial
 from itertools import repeat
 from enum import Enum
-from lib.model.drop_path import DropPath
+from src.model.drop_path import DropPath
 
 def _no_grad_trunc_normal_(tensor, mean, std, a, b):
     # Cut & paste from PyTorch official master until it's in a few official releases - RW

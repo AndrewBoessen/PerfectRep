@@ -1,7 +1,7 @@
 import pytest
 import torch
 from unittest.mock import patch, MagicMock
-from lib.data.augmentation import Augmenter2D
+from src.data.augmentation import Augmenter2D
 
 class Args:
     d2c_params_path = 'lib/params/d2c_params.pkl'

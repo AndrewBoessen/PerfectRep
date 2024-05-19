@@ -1,7 +1,7 @@
 import copy
 import numpy as np
 import pytest
-from lib.utils.data import crop_scale, crop_scale_3d, flip_data, resample
+from src.utils.data import crop_scale, crop_scale_3d, flip_data, resample
 
 
 @pytest.fixture
