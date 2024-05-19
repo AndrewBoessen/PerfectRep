@@ -7,7 +7,7 @@ import imageio
 import io
 from tqdm import tqdm
 from PIL import Image
-from lib.utils.tools import ensure_dir
+from src.utils.tools import ensure_dir
 import matplotlib.pyplot as plt
 
 

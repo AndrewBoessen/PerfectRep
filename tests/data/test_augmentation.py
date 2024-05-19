@@ -1,11 +1,11 @@
 import pytest
 import torch
 from unittest.mock import patch, MagicMock
-from lib.data.augmentation import Augmenter2D
+from src.data.augmentation import Augmenter2D
 
 class Args:
-    d2c_params_path = 'lib/params/d2c_params.pkl'
-    noise_path = 'lib/params/sythentic_noise.pth'
+    d2c_params_path = 'src/params/d2c_params.pkl'
+    noise_path = 'src/params/sythentic_noise.pth'
     mask_ratio = 0.1
     mask_T_ratio = 0.2
 
@@ -15,7 +15,7 @@ def args():
 
 @pytest.fixture
 def augmenter(args):
-    with patch('lib.utils.tools.read_pkl') as mock_read_pkl, \
+    with patch('src.utils.tools.read_pkl') as mock_read_pkl, \
          patch('torch.load') as mock_torch_load:
         
         # Mocking the read_pkl function and torch.load
