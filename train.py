@@ -25,12 +25,14 @@ def parse_args():
     # Add Arguments for Data and Hyperparameters
     parser.add_argument('--config', default='train_config.yaml', type=str, metavar='FILENAME', help='config file')
     parser.add_argument('-d', '--data_path', default='data/', type=str, metavar='PATH', help='path to training data directory')
-    parser.add_argument('-f', '--fit3d', default=False, action='store_true', type=bool, help='use fit3d data for training')
+    parser.add_argument('-f', '--fit3d', default=False, action='store_true', help='use fit3d data for training')
     parser.add_argument('-c', '--checkpoint', default='', type=str, metavar='FILENAME', help='filename of checkpoint binary to load (e.g. model.pt file)')
-    parser.add_argument('-e', '--evaluate', default=False, type=bool, help='evaluate accuracy of model after each epoch')
+    parser.add_argument('-v', '--evaluate', default=False, action='store_true', help='evaluate accuracy of model after each epoch')
     parser.add_argument('-b', '--batch_size', default=1, type=int, help='batch size for training')
     parser.add_argument('-e', '--epochs', default=10, type=int, help='number of epochs to train for')
-    
+    args = parser.parse_args()
+    return args
+
 def set_random_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
