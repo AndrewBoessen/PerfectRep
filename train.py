@@ -47,7 +47,7 @@ def set_random_seed(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-def save_checkpoint(chk_path, epoch, lr, optimizer, model_pos, min_loss):
+def save_checkpoint(chk_path, epoch, lr, optimizer, model, min_loss):
     '''
     Save checkpoint of training state for current epoch.
 
@@ -56,7 +56,7 @@ def save_checkpoint(chk_path, epoch, lr, optimizer, model_pos, min_loss):
         epoch: current epoch to save
         lr: learning rate
         optimzer: optimizer used for training
-        model_pos: model state to save
+        model: model state to save
         min_loss: minimum loss acheived during training
     '''
     assert os.path.exists(chk_path), "Error saving checkpoint: File %s path does not exist!" % cp_path
@@ -65,39 +65,39 @@ def save_checkpoint(chk_path, epoch, lr, optimizer, model_pos, min_loss):
         'epoch': epoch + 1,
         'lr': lr,
         'optimizer': optimizer.state_dict(),
-        'model_pos': model_pos.state_dict(),
+        'model': model.state_dict(),
         'min_loss' : min_loss
     }, chk_path)
 
-def evaluate(args, model_pos, test_loader, datareader):
+def evaluate(cfg, model, test_loader, datareader):
     '''
     Copied from [MotionBERT: A Unified Perspective on Learning Human Motion Representations]
                 (https://github.com/Walter0807/MotionBERT/blob/main/train.py)
     '''
     print('INFO: Evaluating Model')
     results_all = []
-    model_pos.eval()            
+    model.eval()            
     with torch.no_grad():
         for batch_input, batch_gt in tqdm(test_loader):
             N, T = batch_gt.shape[:2]
             if torch.cuda.is_available():
                 batch_input = batch_input.cuda()
-            if args.no_conf:
+            if cfg.no_conf:
                 batch_input = batch_input[:, :, :, :2]
-            if args.flip:    
+            if cfg.flip:    
                 batch_input_flip = flip_data(batch_input)
-                predicted_3d_pos_1 = model_pos(batch_input)
-                predicted_3d_pos_flip = model_pos(batch_input_flip)
+                predicted_3d_pos_1 = model(batch_input)
+                predicted_3d_pos_flip = model(batch_input_flip)
                 predicted_3d_pos_2 = flip_data(predicted_3d_pos_flip)                   # Flip back
                 predicted_3d_pos = (predicted_3d_pos_1+predicted_3d_pos_2) / 2
             else:
-                predicted_3d_pos = model_pos(batch_input)
-            if args.rootrel:
+                predicted_3d_pos = model(batch_input)
+            if cfg.rootrel:
                 predicted_3d_pos[:,:,0,:] = 0     # [N,T,17,3]
             else:
                 batch_gt[:,0,0,2] = 0
 
-            if args.gt_2d:
+            if cfg.gt_2d:
                 predicted_3d_pos[...,:2] = batch_input[...,:2]
             results_all.append(predicted_3d_pos.cpu().numpy())
     results_all = np.concatenate(results_all)
@@ -172,6 +172,49 @@ def evaluate(args, model_pos, test_loader, datareader):
     print('----------')
     return e1, e2, results_all
 
+def train_epoch(cfg, model, train_data_loader, loss, optimzer):
+    model.train() # Set model to training mode
+    for i, (batch_input, batch_gt) in tqdm(enumerate(train_data_loader)):
+        batch_size = len(batch_input)
+        if torch.cuda.is_available(): # Initilize data on device
+            batch_input = batch_input.cuda()
+            batch_gt = batch_gt.cuda()
+        
+        with torch.no_grad():
+            batch_gt[:,:,:,2] = batch_gt[:,:,:,2] - batch_gt[:,0:1,0:1,2] # Place the depth of first frame root to 0
+            batch_input = cfg.aug.augment2D(batch_input, mask=cfg.mask, noise=cfg.noise)
+    
+    predicted_3d_pos = model(batch_input) # (N,T,17,3)
+
+    optimzer.zero_grad()
+    # Calculate Loss
+    loss_3d_pos = loss_mpjpe(predicted_3d_pos, batch_gt)
+    loss_3d_scale = n_mpjpe(predicted_3d_pos, batch_gt)
+    loss_3d_velocity = loss_velocity(predicted_3d_pos, batch_gt)
+    loss_lv = loss_limb_var(predicted_3d_pos)
+    loss_lg = loss_limb_gt(predicted_3d_pos, batch_gt)
+    loss_a = loss_angle(predicted_3d_pos, batch_gt)
+    loss_av = loss_angle_velocity(predicted_3d_pos, batch_gt)
+    loss_total = loss_3d_pos + \
+                 cfg.lambda_scale       * loss_3d_scale + \
+                 cfg.lambda_3d_velocity * loss_3d_velocity + \
+                 cfg.lambda_lv          * loss_lv + \
+                 cfg.lambda_lg          * loss_lg + \
+                 cfg.lambda_a           * loss_a  + \
+                 cfg.lambda_av          * loss_av
+    # Update loss state with calculated losses
+    loss['3d_pos'].update(loss_3d_pos.item(), batch_size)
+    loss['3d_scale'].update(loss_3d_scale.item(), batch_size)
+    loss['3d_velocity'].update(loss_3d_velocity.item(), batch_size)
+    loss['lv'].update(loss_lv.item(), batch_size)
+    loss['lg'].update(loss_lg.item(), batch_size)
+    loss['angle'].update(loss_a.item(), batch_size)
+    loss['angle_velocity'].update(loss_av.item(), batch_size)
+    loss['total'].update(loss_total.item(), batch_size)
+
+    loss_total.backward() # Backprop and update grads
+    optimzer.step() # Take one step in optimzer
+    
 if __name__ == '__main__':
     args = parse_args()
     set_random_seed(args.seed)
