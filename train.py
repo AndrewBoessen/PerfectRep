@@ -4,7 +4,6 @@ import argparse
 import errno
 import math
 import pickle
-import tensorboardX
 from tqdm import tqdm
 from time import time
 import copy
@@ -16,6 +15,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 
 from src.utils.tools import *
 from src.utils.learning import *
@@ -33,6 +33,7 @@ def parse_args():
     )
     # Add Arguments for Data and Hyperparameters
     parser.add_argument('--config', default='train_config.yaml', type=str, metavar='FILENAME', help='config file')
+    parser.add_argument('-s', '--save_path', default='save/', type=str, metavar='PATH', help='path to store logs and checkpoint saves')
     parser.add_argument('-d', '--data_path', default='data/', type=str, metavar='PATH', help='path to training data directory')
     parser.add_argument('-f', '--fit3d', default=False, action='store_true', help='use fit3d data for training')
     parser.add_argument('-c', '--checkpoint', default='', type=str, metavar='FILENAME', help='filename of checkpoint binary to load (e.g. model.pt file)')
@@ -214,7 +215,20 @@ def train_epoch(cfg, model, train_data_loader, loss, optimzer):
 
     loss_total.backward() # Backprop and update grads
     optimzer.step() # Take one step in optimzer
+
+def train(args, cfg):
+    print("Training Config:", cfg)
+
+    try:
+        os.makedirs(args.save_path)
+    except OSError as e:
+        raise RuntimeError('Error creating save directory:', args.save_path)
     
+    writer = SummaryWriter(os.path.join(args.save_path, "logs")) # Write to logs directory
+
+    print('Loading Dataset')
+    
+
 if __name__ == '__main__':
     args = parse_args()
     set_random_seed(args.seed)
