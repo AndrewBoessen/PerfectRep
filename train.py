@@ -23,8 +23,10 @@ from src.utils.data import flip_data
 from src.data.dataset_motion_2d import PoseTrackDataset2D, InstaVDataset2D
 from src.data.dataset_motion_3d import MotionDataset3D
 from src.data.augmentation import Augmenter2D
-from src.data.datareader_h36m import DataReaderH36M  
+from src.data.datareader_h36m import DataReaderH36M
+from src.data.datareader_fit3d import DataReaderFit3D
 from src.model.loss import *
+from lib.model.DSTformer import DSTformer
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -227,7 +229,45 @@ def train(args, cfg):
     writer = SummaryWriter(os.path.join(args.save_path, "logs")) # Write to logs directory
 
     print('Loading Dataset')
+    train_loader_params = {
+        'batch_size': args.batch_size,
+        'shuffle': True,
+        'num_workers': 12,
+        'pin_memory': True,
+        'prefetch_factor': 4,
+        'persistent_workers': True
+    }
+
+    test_loader_params = {
+        'batch_size': args.batch_size,
+        'shuffle': False,
+        'num_workers': 12,
+        'pin_memory': True,
+        'prefetch_factor': 4,
+        'persistent_workers': True
+    }
+
+    train_dataset = MotionDataset3D(args, args.subset_list, 'train')
+    test_dataset = MotionDataset3D(args, args.subset_list, 'test')
+    train_loader_3d = DataLoader(train_dataset, **trainloader_params)
+    test_loader = DataLoader(test_dataset, **testloader_params)
+
+    if args.fit3d:
+        datareader_fit3d = DataReaderFit3D(n_frames=cfg.clip_len, sample_stride=cfg.sample_stride, data_stride_train=cfg.data_stride, data_stride_test=cfg.clip_len, dt_root = args.data_path, dt_file=cfg.fit3d_file)
     
+    datareader_h36m = DataReaderFit3D(n_frames=cfg.clip_len, sample_stride=cfg.sample_stride, data_stride_train=cfg.data_stride, data_stride_test=cfg.clip_len, dt_root = args.data_path, dt_file=cfg.h36m_file)
+    min_loss = 100000
+    model_backbone =  DSTformer(dim_in=3, dim_out=3, dim_feat=cfg.dim_feat, dim_rep=cfg.dim_rep, 
+                                   depth=cfg.depth, num_heads=cfg.num_heads, mlp_ratio=cfg.mlp_ratio, norm_layer=partial(nn.LayerNorm, eps=1e-6), 
+                                   maxlen=cfg.maxlen, num_joints=cfg.num_joints)
+    model_params = 0
+    for parameter in model_backbone.parameters(): # Get number of model parameters
+        model_params = model_params + parameter.numel()
+    print('Model Parameter Count:', model_params)
+
+    if torch.cuda.is_available():
+        model_backbone = nn.DataParallel(model_backbone)
+        model_backbone = model_backbone.cuda()
 
 if __name__ == '__main__':
     args = parse_args()

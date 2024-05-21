@@ -9,7 +9,8 @@ random.seed(0)
 
 class DataReaderH36M(object):
     def __init__(
-        self, n_frames,
+        self, 
+        n_frames,
         sample_stride,
         data_stride_train,
         data_stride_test,
