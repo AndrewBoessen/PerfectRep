@@ -9,6 +9,7 @@ from time import time
 import copy
 import random
 import prettytable
+import warnings
 
 import torch
 import torch.nn as nn
@@ -37,9 +38,8 @@ def parse_args():
     parser.add_argument('--config', default='train_config.yaml', type=str, metavar='FILENAME', help='config file')
     parser.add_argument('-s', '--save_path', default='save/', type=str, metavar='PATH', help='path to store logs and checkpoint saves')
     parser.add_argument('-d', '--data_path', default='data/', type=str, metavar='PATH', help='path to training data directory')
-    parser.add_argument('-f', '--fit3d', default=False, action='store_true', help='use fit3d data for training')
     parser.add_argument('-c', '--checkpoint', default='', type=str, metavar='FILENAME', help='filename of checkpoint binary to load (e.g. model.pt file)')
-    parser.add_argument('-v', '--evaluate', default=False, action='store_true', help='evaluate accuracy of model after each epoch')
+    parser.add_argument('-v', '--evaluate', default=False, action='store_true', help='evaluate accuracy of given checkpoint')
     parser.add_argument('-b', '--batch_size', default=1, type=int, help='batch size for training')
     parser.add_argument('-e', '--epochs', default=10, type=int, help='number of epochs to train for')
     args = parser.parse_args()
@@ -252,14 +252,11 @@ def train(args, cfg):
     train_loader_3d = DataLoader(train_dataset, **trainloader_params)
     test_loader = DataLoader(test_dataset, **testloader_params)
 
-    if args.fit3d:
-        datareader_fit3d = DataReaderFit3D(n_frames=cfg.clip_len, sample_stride=cfg.sample_stride, data_stride_train=cfg.data_stride, data_stride_test=cfg.clip_len, dt_root = args.data_path, dt_file=cfg.fit3d_file)
-    
     datareader_h36m = DataReaderFit3D(n_frames=cfg.clip_len, sample_stride=cfg.sample_stride, data_stride_train=cfg.data_stride, data_stride_test=cfg.clip_len, dt_root = args.data_path, dt_file=cfg.h36m_file)
     min_loss = 100000
     model_backbone =  DSTformer(dim_in=3, dim_out=3, dim_feat=cfg.dim_feat, dim_rep=cfg.dim_rep, 
-                                   depth=cfg.depth, num_heads=cfg.num_heads, mlp_ratio=cfg.mlp_ratio, norm_layer=partial(nn.LayerNorm, eps=1e-6), 
-                                   maxlen=cfg.maxlen, num_joints=cfg.num_joints)
+                                depth=cfg.depth, num_heads=cfg.num_heads, mlp_ratio=cfg.mlp_ratio, norm_layer=partial(nn.LayerNorm, eps=1e-6), 
+                                maxlen=cfg.maxlen, num_joints=cfg.num_joints)
     model_params = 0
     for parameter in model_backbone.parameters(): # Get number of model parameters
         model_params = model_params + parameter.numel()
@@ -268,8 +265,92 @@ def train(args, cfg):
     if torch.cuda.is_available():
         model_backbone = nn.DataParallel(model_backbone)
         model_backbone = model_backbone.cuda()
+    
+    checkpoint_file = os.path.join(args.save_path, args.checkpoint)
+    if os.path.exists(checkpoint_file):
+        print('Loading Checkpoint', checkpoint_file)
+        checkpoint = torch.load(checkpoint_file, map_location=lambda storage, loc: storage)
+        model_backbone.load_state_dict(checkpoint['model_pos'], strict=True)
+    model = model_backbone
+
+    if not args.evaluate: # Not in evaluation mode
+        lr = cfg.learning_rate
+        optimizer = optim.AdamW(filter(lambda p: p.requires_grad, model_pos.parameters()), lr=lr, weight_decay=cfg.weight_decay)
+        lr_decay = cfg.lr_decay
+        st = 0
+
+        print("Training on %s Batches" % len(train_loader_3d))
+
+        # Load checkpoint if given
+        if checkpoint:
+            st = checkpoint['epoch']
+            if 'optimizer' in checkpoint and checkpoint['optimzer'] is not None:
+                optimizer.load_state_dict(checkpoint['optimizer'])
+            else:
+                warnings.warn("Checkpoint does not contain an optimzer. The optimzer will be reset")
+        lr = checkpoint['lr']
+        if 'min_loss' in checkpoint and 'min_loss' is not None:
+            min_loss = checkpoint['min_loss']
+        
+        for epoch in range(st, cfg.epochs): # Start training
+            print("Training Epoch %d" % epoch)
+            start_time = time()
+            # Reset losses for current epoch
+            losses = {}
+            losses['3d_pos'] = AverageMeter()
+            losses['3d_scale'] = AverageMeter()
+            losses['2d_proj'] = AverageMeter()
+            losses['lg'] = AverageMeter()
+            losses['lv'] = AverageMeter()
+            losses['total'] = AverageMeter()
+            losses['3d_velocity'] = AverageMeter()
+            losses['angle'] = AverageMeter()
+            losses['angle_velocity'] = AverageMeter()
+            N = 0
+            # Train in 3D data
+            train_epoch(args, model_pos, train_loader_3d, losses, optimizer) 
+            elapsed = (time() - start_time) / 60
+
+            e1, e2, results = evaluate(cfg, model, test_loader, datareader_h36m) # Evaluate loss after epoch
+
+            print('[%d] time %.2f lr %f 3d_train %f e1 %f e2 %f' % (
+                epoch + 1,
+                elapsed,
+                lr,
+                losses['3d_pos'].avg,
+                e1, e2))
+            # Write to training log
+            writer.add_scalar('Error P1', e1, epoch + 1)
+            writer.add_scalar('Error P2', e2, epoch + 1)
+            writer.add_scalar('loss_3d_pos', losses['3d_pos'].avg, epoch + 1)
+            writer.add_scalar('loss_2d_proj', losses['2d_proj'].avg, epoch + 1)
+            writer.add_scalar('loss_3d_scale', losses['3d_scale'].avg, epoch + 1)
+            writer.add_scalar('loss_3d_velocity', losses['3d_velocity'].avg, epoch + 1)
+            writer.add_scalar('loss_lv', losses['lv'].avg, epoch + 1)
+            writer.add_scalar('loss_lg', losses['lg'].avg, epoch + 1)
+            writer.add_scalar('loss_a', losses['angle'].avg, epoch + 1)
+            writer.add_scalar('loss_av', losses['angle_velocity'].avg, epoch + 1)
+            writer.add_scalar('loss_total', losses['total'].avg, epoch + 1)
+                
+            # Decay learning rate exponentially
+            lr *= lr_decay
+            for param_group in optimizer.param_groups:
+                param_group['lr'] *= lr_decay
+
+            # Save checkpoints
+            chk_path_latest = os.path.join(opts.checkpoint, 'latest_epoch.bin')
+            chk_path_best = os.path.join(opts.checkpoint, 'best_epoch.bin'.format(epoch))
+
+            save_checkpoint(chk_path_latest, epoch, lr, optimizer, model, min_loss)
+            if e1 < min_loss:
+                min_loss = e1
+                save_checkpoint(chk_path_best, epoch, lr, optimizer, model, min_loss)
+    
+    if args.evaluate:
+        e1, e2, results = evaluate(cfg, model, test_loader, datareader_h36m)
 
 if __name__ == '__main__':
     args = parse_args()
     set_random_seed(args.seed)
     cfg = get_config(args.config)
+    train(args, cfg)
