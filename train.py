@@ -19,15 +19,14 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from src.utils.tools import *
-from src.utils.learning import *
+from src.utils.training import *
 from src.utils.data import flip_data
-from src.data.dataset_motion_2d import PoseTrackDataset2D, InstaVDataset2D
 from src.data.dataset_motion_3d import MotionDataset3D
 from src.data.augmentation import Augmenter2D
 from src.data.datareader_h36m import DataReaderH36M
 from src.data.datareader_fit3d import DataReaderFit3D
 from src.model.loss import *
-from lib.model.DSTformer import DSTformer
+from src.model.DSTformer import DSTformer
 
 def parse_args():
     parser = argparse.ArgumentParser(
