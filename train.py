@@ -284,12 +284,12 @@ def train(args, cfg):
         # Load checkpoint if given
         if checkpoint:
             st = checkpoint['epoch']
-            if 'optimizer' in checkpoint and checkpoint['optimzer'] is not None:
+            if 'optimizer' in checkpoint and checkpoint['optimzer'] != None:
                 optimizer.load_state_dict(checkpoint['optimizer'])
             else:
                 warnings.warn("Checkpoint does not contain an optimzer. The optimzer will be reset")
         lr = checkpoint['lr']
-        if 'min_loss' in checkpoint and 'min_loss' is not None:
+        if 'min_loss' in checkpoint and 'min_loss' != None:
             min_loss = checkpoint['min_loss']
         
         for epoch in range(st, cfg.epochs): # Start training
