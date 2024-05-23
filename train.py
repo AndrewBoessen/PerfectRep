@@ -2,6 +2,7 @@ import os
 import numpy as np
 import argparse
 import errno
+from functools import partial
 import math
 import pickle
 from tqdm import tqdm
@@ -35,11 +36,12 @@ def parse_args():
     )
     # Add Arguments for Data and Hyperparameters
     parser.add_argument('--config', default='train_config.yaml', type=str, metavar='FILENAME', help='config file')
-    parser.add_argument('-s', '--save_path', default='save/', type=str, metavar='PATH', help='path to store logs and checkpoint saves')
-    parser.add_argument('-d', '--data_path', default='data/', type=str, metavar='PATH', help='path to training data directory')
-    parser.add_argument('-c', '--checkpoint', default='', type=str, metavar='FILENAME', help='filename of checkpoint binary to load (e.g. model.pt file)')
+    parser.add_argument('-s', '--save_path', default='save', type=str, metavar='PATH', help='path to store logs and checkpoint saves')
+    parser.add_argument('-d', '--data_path', default='data/motion3d', type=str, metavar='PATH', help='path to training data directory')
+    parser.add_argument('-r', '--random_seed', default=0, type=int, help='seed used to generate random numbers')
+    parser.add_argument('-c', '--checkpoint', default=None, type=str, metavar='FILENAME', help='filename of checkpoint binary to load (e.g. model.pt file)')
     parser.add_argument('-v', '--evaluate', default=False, action='store_true', help='evaluate accuracy of given checkpoint')
-    parser.add_argument('-b', '--batch_size', default=1, type=int, help='batch size for training')
+    parser.add_argument('-b', '--batch_size', default=3, type=int, help='batch size for training')
     parser.add_argument('-e', '--epochs', default=10, type=int, help='number of epochs to train for')
     args = parser.parse_args()
     return args
@@ -221,7 +223,7 @@ def train(args, cfg):
     print("Training Config:", cfg)
 
     try:
-        os.makedirs(args.save_path)
+        os.makedirs(args.save_path, exist_ok=True)
     except OSError as e:
         raise RuntimeError('Error creating save directory:', args.save_path)
     
@@ -246,12 +248,12 @@ def train(args, cfg):
         'persistent_workers': True
     }
 
-    train_dataset = MotionDataset3D(args, args.subset_list, 'train')
-    test_dataset = MotionDataset3D(args, args.subset_list, 'test')
-    train_loader_3d = DataLoader(train_dataset, **trainloader_params)
-    test_loader = DataLoader(test_dataset, **testloader_params)
+    train_dataset = MotionDataset3D(cfg, cfg.subset_list, 'train')
+    test_dataset = MotionDataset3D(cfg, cfg.subset_list, 'test')
+    train_loader_3d = DataLoader(train_dataset, **train_loader_params)
+    test_loader = DataLoader(test_dataset, **test_loader_params)
 
-    datareader_h36m = DataReaderFit3D(n_frames=cfg.clip_len, sample_stride=cfg.sample_stride, data_stride_train=cfg.data_stride, data_stride_test=cfg.clip_len, dt_root = args.data_path, dt_file=cfg.h36m_file)
+    datareader_h36m = DataReaderFit3D(n_frames=cfg.clip_len, sample_stride=cfg.sample_stride, data_stride_train=cfg.data_stride, data_stride_test=cfg.clip_len, dt_root = args.data_path, dt_file=cfg.dt_file)
     min_loss = 100000
     model_backbone =  DSTformer(dim_in=3, dim_out=3, dim_feat=cfg.dim_feat, dim_rep=cfg.dim_rep, 
                                 depth=cfg.depth, num_heads=cfg.num_heads, mlp_ratio=cfg.mlp_ratio, norm_layer=partial(nn.LayerNorm, eps=1e-6), 
@@ -265,20 +267,26 @@ def train(args, cfg):
         model_backbone = nn.DataParallel(model_backbone)
         model_backbone = model_backbone.cuda()
     
-    checkpoint_file = os.path.join(args.save_path, args.checkpoint)
-    if os.path.exists(checkpoint_file):
-        print('Loading Checkpoint', checkpoint_file)
-        checkpoint = torch.load(checkpoint_file, map_location=lambda storage, loc: storage)
-        model_backbone.load_state_dict(checkpoint['model_pos'], strict=True)
+    if args.checkpoint and args.checkpoint != None:
+        checkpoint_file = os.path.join(args.save_path, args.checkpoint)
+        if os.path.exists(checkpoint_file):
+            print('Loading Checkpoint', checkpoint_file)
+            checkpoint = torch.load(checkpoint_file, map_location=lambda storage, loc: storage)
+            model_backbone.load_state_dict(checkpoint['model_pos'], strict=True)
+        else:
+            warnings.warn("Checkpoint file does not exist: %s" % checkpoint_file)
+            checkpoint = None
+    else:
+        checkpoint = None
     model = model_backbone
 
     if not args.evaluate: # Not in evaluation mode
         lr = cfg.learning_rate
-        optimizer = optim.AdamW(filter(lambda p: p.requires_grad, model_pos.parameters()), lr=lr, weight_decay=cfg.weight_decay)
+        optimizer = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=cfg.weight_decay)
         lr_decay = cfg.lr_decay
         st = 0
 
-        print("Training on %s Batches" % len(train_loader_3d))
+        print("Training on %s dataset(s)" % len(train_loader_3d))
 
         # Load checkpoint if given
         if checkpoint:
@@ -287,9 +295,9 @@ def train(args, cfg):
                 optimizer.load_state_dict(checkpoint['optimizer'])
             else:
                 warnings.warn("Checkpoint does not contain an optimzer. The optimzer will be reset")
-        lr = checkpoint['lr']
-        if 'min_loss' in checkpoint and 'min_loss' != None:
-            min_loss = checkpoint['min_loss']
+            lr = checkpoint['lr'] # Set learning rate from checkpoint
+            if 'min_loss' in checkpoint and 'min_loss' != None:
+                min_loss = checkpoint['min_loss'] # Upadte min loss from checkpoint
         
         for epoch in range(st, cfg.epochs): # Start training
             print("Training Epoch %d" % epoch)
@@ -307,7 +315,7 @@ def train(args, cfg):
             losses['angle_velocity'] = AverageMeter()
             N = 0
             # Train in 3D data
-            train_epoch(args, model_pos, train_loader_3d, losses, optimizer) 
+            train_epoch(args, model, train_loader_3d, losses, optimizer) 
             elapsed = (time() - start_time) / 60
 
             e1, e2, results = evaluate(cfg, model, test_loader, datareader_h36m) # Evaluate loss after epoch
@@ -350,6 +358,6 @@ def train(args, cfg):
 
 if __name__ == '__main__':
     args = parse_args()
-    set_random_seed(args.seed)
+    set_random_seed(args.random_seed)
     cfg = get_config(args.config)
     train(args, cfg)

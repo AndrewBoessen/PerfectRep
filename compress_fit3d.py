@@ -1,8 +1,9 @@
 import json
 import numpy as np
 import pickle
+from tqdm import tqdm
 
-from lib.utils.tools import ensure_dir
+from src.utils.tools import ensure_dir
 
 
 def project_to_2d(X, camera_params):
@@ -95,7 +96,7 @@ def read_data(data_root, dataset_name, subset, subj_name, action_name, camera_na
     return j3ds, cam_params, annotations
 
 
-def preprocess_data(data_root='data', dataset_name='fit3d_train'):
+def preprocess_data(data_root='data', dataset_name='fit3d', test_subjects=['s08', 's09']):
     data_info_path = '%s/%s/fit3d_info.json' % (data_root, dataset_name)
 
     with open(data_info_path) as f:  # Load dataset info about subjects and actions
@@ -110,7 +111,15 @@ def preprocess_data(data_root='data', dataset_name='fit3d_train'):
     rep_annotations = {}  # Dict holding annotation for a given source label
     source_labels = []  # Source of frame
 
-    for subj in train_subj:
+    joints_3d_labels_test = []  # Array of np arrays for 3d joints
+    joints_2d_input_test = []  # Array of np arrays for 2d joint inputs
+    rep_annotations_test = {}  # Dict holding annotation for a given source label
+    source_labels_test = []  # Source of frame
+
+    for s in test_subjects:
+        assert s in train_subj, "Test subject %s is not in dataset" % s
+
+    for subj in tqdm(train_subj):
         subj_actions = actions[subj]  # Actions of current subject in set
         for action in subj_actions:
             for camera in camera_names:
@@ -131,12 +140,19 @@ def preprocess_data(data_root='data', dataset_name='fit3d_train'):
                     action_annotations = None
                 # Label for curr batch of frames
                 source = '%s_%s_%s' % (subj, action, camera)
-
-                joints_3d_labels.append(joints_3d)
-                joints_2d_input.append(joints_2d)
-                if action_annotations:
-                    rep_annotations[source] = action_annotations
-                source_labels.extend([source] * joints_3d.shape[0])
+                
+                if subj in test_subjects:
+                    joints_3d_labels_test.append(joints_3d)
+                    joints_2d_input_test.append(joints_2d)
+                    if action_annotations:
+                        rep_annotations_test[source] = action_annotations
+                        source_labels_test.extend([source] * joints_3d.shape[0])
+                else:
+                    joints_3d_labels.append(joints_3d)
+                    joints_2d_input.append(joints_2d)
+                    if action_annotations:
+                        rep_annotations[source] = action_annotations
+                    source_labels.extend([source] * joints_3d.shape[0])
 
     joints_3d_labels = np.concatenate(
         joints_3d_labels, axis=0)  # Unify all into one ndarray
@@ -144,16 +160,31 @@ def preprocess_data(data_root='data', dataset_name='fit3d_train'):
         joints_2d_input, axis=0)  # Unify all into one ndarray
     source_labels = np.array(source_labels)
 
+    joints_3d_labels_test = np.concatenate(
+        joints_3d_labels_test, axis=0)  # Unify all into one ndarray
+    joints_2d_input_test = np.concatenate(
+        joints_2d_input_test, axis=0)  # Unify all into one ndarray
+    source_labels_test = np.array(source_labels_test)
+
     assert joints_3d_labels.shape[0] == joints_2d_input.shape[0], "Inputs and Labels are not the same size"
     assert joints_3d_labels.shape[-1] == 3, "3D joints are not 3 dimensional"
     assert joints_2d_input.shape[-1] == 2, "2D joints are not 2 dimensional"
+
+    assert joints_3d_labels_test.shape[0] == joints_2d_input_test.shape[0], "Test Inputs and Labels are not the same size"
+    assert joints_3d_labels_test.shape[-1] == 3, "Test 3D joints are not 3 dimensional"
+    assert joints_2d_input_test.shape[-1] == 2, "Test 2D joints are not 2 dimensional"
 
     print("Successfully Processed Data\nInputs %s\nLabels %s\nSource %s" %
           (joints_2d_input.shape, joints_3d_labels.shape, source_labels.shape))
 
     # Initialize data dictionary
     data = {
-        'test': {},
+        'test': {
+            '2d_joint_inputs': joints_2d_input_test,
+            '3d_joint_labels': joints_3d_labels_test,
+            'source': source_labels_test,
+            'rep_annotations': rep_annotations_test
+        },
         'train': {
             '2d_joint_inputs': joints_2d_input,
             '3d_joint_labels': joints_3d_labels,

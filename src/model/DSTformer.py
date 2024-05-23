@@ -425,63 +425,63 @@ class DSTformer(nn.Module):
                 self.ts_attn[i].weight.data.fill_(0)
                 self.ts_attn[i].bias.data.fill_(0.5)
         
-        def _init_weights(self, m):
-            """
-            Initialize the weights of the given module.
-        
-            This function initializes the weights and biases of the given module `m` based on its type:
-            - For `nn.Linear` layers, the weights are initialized using a truncated normal distribution with a standard deviation of 0.02, and biases are set to zero if they exist.
-            - For `nn.LayerNorm` layers, both weights and biases are set to one and zero respectively.
-        
-            Args:
-            m : torch.nn.Module
-                The module to initialize. This should be an instance of either `nn.Linear` or `nn.LayerNorm`.
-            """
-            if isinstance(m, nn.Linear):
-                trunc_normal_(m.weight, std=.02)
-                if isinstance(m, nn.Linear) and m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.LayerNorm):
+    def _init_weights(self, m):
+        """
+        Initialize the weights of the given module.
+    
+        This function initializes the weights and biases of the given module `m` based on its type:
+        - For `nn.Linear` layers, the weights are initialized using a truncated normal distribution with a standard deviation of 0.02, and biases are set to zero if they exist.
+        - For `nn.LayerNorm` layers, both weights and biases are set to one and zero respectively.
+    
+        Args:
+        m : torch.nn.Module
+            The module to initialize. This should be an instance of either `nn.Linear` or `nn.LayerNorm`.
+        """
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
                 nn.init.constant_(m.bias, 0)
-                nn.init.constant_(m.weight, 1.0)
-        
-        def get_classifier(self):
-            return self.head
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+    
+    def get_classifier(self):
+        return self.head
 
-        def reset_classifier(self, dim_out, global_pool=''):
-            self.dim_out = dim_out
-            self.head = nn.Linear(self.dim_feat, dim_out) if dim_out > 0 else nn.Identity()
-        
-        def forward(self, x, return_rep=False):   
-            B, F, J, C = x.shape # Batch : Frame : Joint : Embedding Space
-            x = x.reshape(-1, J, C) # Concat all batches
-            BF = x.shape[0]
-            x = self.joints_embed(x)
-            x = x + self.pos_embed # Add positional embedding
-            _, J, C = x.shape
-            x = x.reshape(-1, F, J, C) + self.temp_embed[:,:F,:,:] # Temportal encoding
-            x = x.reshape(BF, J, C)
-            x = self.pos_drop(x)
-            alphas = [] # Fuse alpha vals
-            for idx, (blk_st, blk_ts) in enumerate(zip(self.blocks_st, self.blocks_ts)):
-                x_st = blk_st(x, F)
-                x_ts = blk_ts(x, F)
-                if self.att_fuse:
-                    att = self.ts_attn[idx]
-                    alpha = torch.cat([x_st, x_ts], dim=-1)
-                    BF, J = alpha.shape[:2]
-                    alpha = att(alpha)
-                    alpha = alpha.softmax(dim=-1)
-                    x = x_st * alpha[:,:,0:1] + x_ts * alpha[:,:,1:2]
-                else:
-                    x = (x_st + x_ts)*0.5 # Assign equal weight is fuse not applied
-            x = self.norm(x)
-            x = x.reshape(B, F, J, -1)
-            x = self.pre_logits(x) # [B, F, J, dim_feat]
-            if return_rep:
-                return x
-            x = self.head(x)
+    def reset_classifier(self, dim_out, global_pool=''):
+        self.dim_out = dim_out
+        self.head = nn.Linear(self.dim_feat, dim_out) if dim_out > 0 else nn.Identity()
+   
+    def forward(self, x, return_rep=False):   
+        B, F, J, C = x.shape # Batch : Frame : Joint : Embedding Space
+        x = x.reshape(-1, J, C) # Concat all batches
+        BF = x.shape[0]
+        x = self.joints_embed(x)
+        x = x + self.pos_embed # Add positional embedding
+        _, J, C = x.shape
+        x = x.reshape(-1, F, J, C) + self.temp_embed[:,:F,:,:] # Temportal encoding
+        x = x.reshape(BF, J, C)
+        x = self.pos_drop(x)
+        alphas = [] # Fuse alpha vals
+        for idx, (blk_st, blk_ts) in enumerate(zip(self.blocks_st, self.blocks_ts)):
+            x_st = blk_st(x, F)
+            x_ts = blk_ts(x, F)
+            if self.att_fuse:
+                att = self.ts_attn[idx]
+                alpha = torch.cat([x_st, x_ts], dim=-1)
+                BF, J = alpha.shape[:2]
+                alpha = att(alpha)
+                alpha = alpha.softmax(dim=-1)
+                x = x_st * alpha[:,:,0:1] + x_ts * alpha[:,:,1:2]
+            else:
+                x = (x_st + x_ts)*0.5 # Assign equal weight is fuse not applied
+        x = self.norm(x)
+        x = x.reshape(B, F, J, -1)
+        x = self.pre_logits(x) # [B, F, J, dim_feat]
+        if return_rep:
             return x
+        x = self.head(x)
+        return x
 
-        def get_representation(self, x):
-            return self.forward(x, return_rep=True)
+    def get_representation(self, x):
+        return self.forward(x, return_rep=True)
