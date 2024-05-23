@@ -12,7 +12,7 @@ PerfectRep is a 3D pose estimation model tailored specifically for powerlifting 
 
 - Python >= 3.7
 - Pytorch
-- Cuda=11.6
+- Cuda=11.8
 - NumPy
 - Matplotlib
 - Pandas
@@ -37,7 +37,7 @@ PerfectRep is a 3D pose estimation model tailored specifically for powerlifting 
    conda create -n perfectrep python=3.7 anaconda
    conda activate perfectrep
    # Please install PyTorch according to your CUDA version.
-   conda install pytorch torchvision torchaudio pytorch-cuda=11.6 -c pytorch -c nvidia
+   conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
    pip install -r requirements.txt
    ```
 

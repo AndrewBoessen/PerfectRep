@@ -46,8 +46,6 @@ def construct_include(loader: Loader, node: yaml.Node) -> Any:
     with open(filename, 'r') as f:
         if extension in ('yaml', 'yml'):
             return yaml.load(f, Loader)
-        elif extension in ('json', ):
-            return json.load(f)
         else:
             return ''.join(f.readlines())
 
