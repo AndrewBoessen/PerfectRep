@@ -5,12 +5,10 @@ partial_train: null
 
 # Traning 
 epochs: 90
-checkpoint_frequency: 30
 dropout: 0.0
 learning_rate: 0.0005
 weight_decay: 0.01
 lr_decay: 0.99
-pretrain_3d_curriculum: 30
 
 # Model
 maxlen: 243

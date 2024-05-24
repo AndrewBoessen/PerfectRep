@@ -62,7 +62,6 @@ def save_checkpoint(chk_path, epoch, lr, optimizer, model, min_loss):
         model: model state to save
         min_loss: minimum loss acheived during training
     '''
-    assert os.path.exists(chk_path), "Error saving checkpoint: File %s path does not exist!" % cp_path
     print('Saving checkpoint to', chk_path)
     torch.save({
         'epoch': epoch + 1,
@@ -71,6 +70,70 @@ def save_checkpoint(chk_path, epoch, lr, optimizer, model, min_loss):
         'model': model.state_dict(),
         'min_loss' : min_loss
     }, chk_path)
+
+def evaluate(cfg, model, test_loader, datareader):
+    print("Evaluating Model")
+    results = []
+    model.eval() # Put model into evaluation mode
+
+    with torch.no_grad():
+        for input, gt in tqdm(test_loader):
+            N, T = gt.shape[:2]
+            if torch.cuda.is_available():
+                input = input.cuda()
+            if cfg.flip:
+                flipped_input = flip_data(input)
+                pred_3d_1 = model(input)
+                pred_3d_flipped = model(flipped_input)
+                pred_3d_2 = flip_data(pred_3d_flipped) # flip back
+                pred_3d = (pred_3d_1+pred_3d_2) / 2 # Average of flipped and normal prediction
+            else:
+                pred_3d = model(input)
+            if cfg.rootrel:
+                pred_3d[:,:,0,:] = 0     # [N,T,17,3]
+            else:
+                gt[:,0,0,2] = 0
+            results.append(pred_3d.cpu().numpy()) # Convert to np array and append to results
+    results = np.concatenate(results)
+    results = datareader.denormalize(results)
+    _, split_id_test = datareader.get_split_id()
+
+    gts = np.array(datareader.dt_dataset['test']['3d_joint_labels'])
+    sources = np.array(datareader.dt_dataset['test']['source'])
+
+    num_test_frames = len(sources)
+    frames = np.array(range(num_test_frames))
+
+    gt_clips = gts[split_id_test]
+    gt_clips = gt_clips[:, :, :17, :] # Convert to h3.6m 17 keypoints
+
+    source_clips = sources[split_id_test]
+    frame_clips = frames[split_id_test]
+    assert len(results) == len(gt_clips)
+
+    e1_all = np.zeros(num_test_frames)
+    e2_all = np.zeros(num_test_frames)
+
+    for i in range(len(results)):
+        frame_list = frame_clips[i]
+
+        gt = gt_clips[i]
+        pred = results[i]
+
+        err1 = mpjpe(pred, gt)
+        err2 = p_mpjpe(pred, gt)
+
+        e1_all[frame_list] += err1
+        e2_all[frame_list] += err2
+    
+    e1 = np.mean(e1_all)
+    e2 = np.mean(e2_all)
+
+    print('Protocol #1 Error (MPJPE):', e1, 'mm')
+    print('Protocol #2 Error (P-MPJPE):', e2, 'mm')
+    print('----------')
+
+    return e1, e2
 
 def train_epoch(cfg, model, train_data_loader, loss, optimzer):
     model.train() # Set model to training mode
@@ -83,37 +146,37 @@ def train_epoch(cfg, model, train_data_loader, loss, optimzer):
         with torch.no_grad():
             batch_gt[:,:,:,2] = batch_gt[:,:,:,2] - batch_gt[:,0:1,0:1,2] # Place the depth of first frame root to 0
             batch_input = cfg.aug.augment2D(batch_input, mask=cfg.mask, noise=cfg.noise)
-    
-    predicted_3d_pos = model(batch_input) # (N,T,17,3)
 
-    optimzer.zero_grad()
-    # Calculate Loss
-    loss_3d_pos = loss_mpjpe(predicted_3d_pos, batch_gt)
-    loss_3d_scale = n_mpjpe(predicted_3d_pos, batch_gt)
-    loss_3d_velocity = loss_velocity(predicted_3d_pos, batch_gt)
-    loss_lv = loss_limb_var(predicted_3d_pos)
-    loss_lg = loss_limb_gt(predicted_3d_pos, batch_gt)
-    loss_a = loss_angle(predicted_3d_pos, batch_gt)
-    loss_av = loss_angle_velocity(predicted_3d_pos, batch_gt)
-    loss_total = loss_3d_pos + \
-                 cfg.lambda_scale       * loss_3d_scale + \
-                 cfg.lambda_3d_velocity * loss_3d_velocity + \
-                 cfg.lambda_lv          * loss_lv + \
-                 cfg.lambda_lg          * loss_lg + \
-                 cfg.lambda_a           * loss_a  + \
-                 cfg.lambda_av          * loss_av
-    # Update loss state with calculated losses
-    loss['3d_pos'].update(loss_3d_pos.item(), batch_size)
-    loss['3d_scale'].update(loss_3d_scale.item(), batch_size)
-    loss['3d_velocity'].update(loss_3d_velocity.item(), batch_size)
-    loss['lv'].update(loss_lv.item(), batch_size)
-    loss['lg'].update(loss_lg.item(), batch_size)
-    loss['angle'].update(loss_a.item(), batch_size)
-    loss['angle_velocity'].update(loss_av.item(), batch_size)
-    loss['total'].update(loss_total.item(), batch_size)
+        predicted_3d_pos = model(batch_input) # (N,T,17,3)
 
-    loss_total.backward() # Backprop and update grads
-    optimzer.step() # Take one step in optimzer
+        optimzer.zero_grad()
+        # Calculate Loss
+        loss_3d_pos = loss_mpjpe(predicted_3d_pos, batch_gt)
+        loss_3d_scale = n_mpjpe(predicted_3d_pos, batch_gt)
+        loss_3d_velocity = loss_velocity(predicted_3d_pos, batch_gt)
+        loss_lv = loss_limb_var(predicted_3d_pos)
+        loss_lg = loss_limb_gt(predicted_3d_pos, batch_gt)
+        loss_a = loss_angle(predicted_3d_pos, batch_gt)
+        loss_av = loss_angle_velocity(predicted_3d_pos, batch_gt)
+        loss_total = loss_3d_pos + \
+                     cfg.lambda_scale       * loss_3d_scale + \
+                     cfg.lambda_3d_velocity * loss_3d_velocity + \
+                     cfg.lambda_lv          * loss_lv + \
+                     cfg.lambda_lg          * loss_lg + \
+                     cfg.lambda_a           * loss_a  + \
+                     cfg.lambda_av          * loss_av
+        # Update loss state with calculated losses
+        loss['3d_pos'].update(loss_3d_pos.item(), batch_size)
+        loss['3d_scale'].update(loss_3d_scale.item(), batch_size)
+        loss['3d_velocity'].update(loss_3d_velocity.item(), batch_size)
+        loss['lv'].update(loss_lv.item(), batch_size)
+        loss['lg'].update(loss_lg.item(), batch_size)
+        loss['angle'].update(loss_a.item(), batch_size)
+        loss['angle_velocity'].update(loss_av.item(), batch_size)
+        loss['total'].update(loss_total.item(), batch_size)
+
+        loss_total.backward() # Backprop and update grads
+        optimzer.step() # Take one step in optimzer
 
 def train(args, cfg):
     print("Training Config:", cfg)
@@ -200,7 +263,7 @@ def train(args, cfg):
             cfg.aug = Augmenter2D(cfg) # Data Augmentation: flip and add noise
         
         for epoch in range(st, cfg.epochs): # Start training
-            print("Training Epoch %d" % epoch)
+            print("Training Epoch %d" % (epoch + 1))
             start_time = time()
             # Reset losses for current epoch
             losses = {}
@@ -218,7 +281,7 @@ def train(args, cfg):
             train_epoch(cfg, model, train_loader_3d, losses, optimizer) 
             elapsed = (time() - start_time) / 60
 
-            e1, e2, results = evaluate(cfg, model, test_loader, datareader_h36m) # Evaluate loss after epoch
+            e1, e2 = evaluate(cfg, model, test_loader, datareader_h36m) # Evaluate loss after epoch
 
             print('[%d] time %.2f lr %f 3d_train %f e1 %f e2 %f' % (
                 epoch + 1,
@@ -243,10 +306,13 @@ def train(args, cfg):
             lr *= lr_decay
             for param_group in optimizer.param_groups:
                 param_group['lr'] *= lr_decay
+            
+            ensure_dir(args.save_path)
+            assert os.path.exists(args.save_path), "Error saving checkpoint: %s path does not exist!" % arg.save_path
 
             # Save checkpoints
-            chk_path_latest = os.path.join(opts.checkpoint, 'latest_epoch.bin')
-            chk_path_best = os.path.join(opts.checkpoint, 'best_epoch.bin'.format(epoch))
+            chk_path_latest = os.path.join(args.save_path, 'latest_epoch.bin')
+            chk_path_best = os.path.join(args.save_path, 'best_epoch.bin'.format(epoch))
 
             save_checkpoint(chk_path_latest, epoch, lr, optimizer, model, min_loss)
             if e1 < min_loss:
@@ -254,7 +320,7 @@ def train(args, cfg):
                 save_checkpoint(chk_path_best, epoch, lr, optimizer, model, min_loss)
     
     if args.evaluate:
-        e1, e2, results = evaluate(cfg, model, test_loader, datareader_h36m)
+        e1, e2 = evaluate(cfg, model, test_loader, datareader_h36m)
 
 if __name__ == '__main__':
     args = parse_args()
