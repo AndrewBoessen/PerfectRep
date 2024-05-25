@@ -24,7 +24,7 @@ datareader = DataReaderFit3D(n_frames=243, sample_stride=1, data_stride_train=81
 train_data, test_data, train_labels, test_labels = datareader.get_sliced_data()
 
 print("Training Data Info:", train_data.shape)
-print("Test Data Info", test_data.shape)
+print("Test Data Info:", test_data.shape)
 assert len(train_data) == len(train_labels)
 assert len(test_data) == len(test_labels)
 
