@@ -79,6 +79,13 @@ class DataReaderFit3D(object):
         test_labels = self.dt_dataset['test']['3d_joint_labels'][::self.sample_stride, :, :3].astype(
             np.float32)  # [N, 17, 3]
 
+        # Normalize Z axis
+        train_roots = train_labels[:, 0, 2:] # root at first joint (hips)
+        test_roots = test_labels[:, 0, 2:] # root at first joint (hips)
+
+        train_labels[:, :, 2:] -= train_roots[:, np.newaxis] # newaxis for broadcasting across all joints
+        test_labels[:, :, 2:] -= test_roots[:, np.newaxis] # newaxis for broadcasting across all joints
+
         return train_labels, test_labels
 
     def read_ann(self):

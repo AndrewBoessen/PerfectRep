@@ -9,7 +9,7 @@ from tqdm import tqdm
 from PIL import Image
 from src.utils.tools import ensure_dir
 import matplotlib.pyplot as plt
-
+from mpl_toolkits.mplot3d import Axes3D
 
 def render_and_save(motion_input, save_path, keep_imgs=False, fps=25, color="#F96706#FB8D43#FDB381", with_conf=False):
     """

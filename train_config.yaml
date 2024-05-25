@@ -29,7 +29,7 @@ rootrel: True
 sample_stride: 1
 num_joints: 17
 no_conf: True
-gt_2d: True
+gt_2d: False
 
 # Loss
 lambda_3d_velocity: 20.0
@@ -40,7 +40,7 @@ lambda_a: 0.0
 lambda_av: 0.0
 
 # Augmentation
-synthetic: True   # synthetic: don't use 2D detection results, fake it (from 3D)
+synthetic: False
 flip: True
 mask_ratio: 0.05
 mask_T_ratio: 0.1

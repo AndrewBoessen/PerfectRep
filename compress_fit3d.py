@@ -5,7 +5,6 @@ from tqdm import tqdm
 
 from src.utils.tools import ensure_dir
 
-
 def project_to_2d(X, camera_params):
     """
     Project 3D points to 2D using the Human3.6M camera projection function.
@@ -39,7 +38,6 @@ def project_to_2d(X, camera_params):
 
     return f*XXX + c
 
-
 def read_cam_params(cam_path):
     with open(cam_path) as f:
         cam_params = json.load(f)
@@ -57,8 +55,8 @@ def cam_perspective_3d(j3d, cam_params):
         j3d: 3D joints (N, *, 3)
         cam_params: intrinsic and extrinsic camera parameters
     """
-    return np.matmul(j3d - np.array(cam_params['extrinsics']['T']), np.array(cam_params['extrinsics']['R']).T)
 
+    return np.matmul(j3d - np.array(cam_params['extrinsics']['T']), np.array(cam_params['extrinsics']['R']).T)
 
 def read_data(data_root, dataset_name, subset, subj_name, action_name, camera_name):
     """
@@ -146,7 +144,7 @@ def preprocess_data(data_root='data', dataset_name='fit3d', test_subjects=['s08'
                     joints_2d_input_test.append(joints_2d)
                     if action_annotations:
                         rep_annotations_test[source] = action_annotations
-                        source_labels_test.extend([source] * joints_3d.shape[0])
+                    source_labels_test.extend([source] * joints_3d.shape[0])
                 else:
                     joints_3d_labels.append(joints_3d)
                     joints_2d_input.append(joints_2d)
@@ -176,6 +174,8 @@ def preprocess_data(data_root='data', dataset_name='fit3d', test_subjects=['s08'
 
     print("Successfully Processed Data\nInputs %s\nLabels %s\nSource %s" %
           (joints_2d_input.shape, joints_3d_labels.shape, source_labels.shape))
+    print("Successfully Processed Test Data\nInputs %s\nLabels %s\nSource %s" %
+          (joints_2d_input_test.shape, joints_3d_labels_test.shape, source_labels_test.shape))
 
     # Initialize data dictionary
     data = {
@@ -201,7 +201,6 @@ def preprocess_data(data_root='data', dataset_name='fit3d', test_subjects=['s08'
         pickle.dump(data, f)  # Serialize data dictionary
 
     print('Saved processes data to %s/motion3d/%s' % (data_root, file_name))
-
 
 if __name__ == '__main__':
     preprocess_data()

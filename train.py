@@ -19,6 +19,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
+from src.utils.vismo import render_and_save
 from src.utils.tools import *
 from src.utils.training import *
 from src.utils.data import flip_data
@@ -138,6 +139,10 @@ def evaluate(cfg, model, test_loader, datareader):
 def train_epoch(cfg, model, train_data_loader, loss, optimzer):
     model.train() # Set model to training mode
     for i, (batch_input, batch_gt) in tqdm(enumerate(train_data_loader)):
+
+        render_and_save(batch_input[0], 'save/input.mp4', with_conf=True)
+        render_and_save(batch_gt[0], 'save/gt.mp4')
+        break
         batch_size = len(batch_input)
         if torch.cuda.is_available(): # Initilize data on device
             batch_input = batch_input.cuda()
