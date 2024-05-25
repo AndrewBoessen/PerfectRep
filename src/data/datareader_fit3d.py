@@ -3,7 +3,7 @@
 import numpy as np
 import random
 from src.utils.tools import read_pkl
-from src.utils.data import split_clips
+from src.utils.data import split_clips, crop_scale, crop_scale_3d
 random.seed(0)
 
 
@@ -46,17 +46,11 @@ class DataReaderFit3D(object):
 
         Returns train and test sets ([N, 17, 3])
         """
-        res_w = res_h = 900  # Camera resolution
 
         trainset = self.dt_dataset['train']['2d_joint_inputs'][::self.sample_stride, :, :2].astype(
             np.float32)  # [N, 17, 2]
         testset = self.dt_dataset['test']['2d_joint_inputs'][::self.sample_stride, :, :2].astype(
             np.float32)  # [N, 17, 2]
-
-        trainset[:, :, :] = trainset[:, :, :] / \
-            res_w * 2 - [1, res_h / res_w]  # Norm [-1,1]
-        testset[:, :, :] = testset[:, :, :] / \
-            res_w * 2 - [1, res_h / res_w]  # Norm [-1,1]
 
         # No conf provided, fill with 1.
         train_confidence = np.ones(trainset.shape)[:, :, 0:1]
@@ -65,6 +59,10 @@ class DataReaderFit3D(object):
         test_confidence = np.ones(testset.shape)[:, :, 0:1]
         testset = np.concatenate(
             (testset, test_confidence), axis=2)  # [N, 17, 3]
+        
+        # Normalize data to -1 to 1
+        trainset = crop_scale(trainset)
+        testset = crop_scale(testset)
 
         return trainset, testset
 
@@ -79,12 +77,9 @@ class DataReaderFit3D(object):
         test_labels = self.dt_dataset['test']['3d_joint_labels'][::self.sample_stride, :, :3].astype(
             np.float32)  # [N, 17, 3]
 
-        # Normalize Z axis
-        train_roots = train_labels[:, 0, 2:] # root at first joint (hips)
-        test_roots = test_labels[:, 0, 2:] # root at first joint (hips)
-
-        train_labels[:, :, 2:] -= train_roots[:, np.newaxis] # newaxis for broadcasting across all joints
-        test_labels[:, :, 2:] -= test_roots[:, np.newaxis] # newaxis for broadcasting across all joints
+        # Normalize points to range
+        train_labels = crop_scale_3d(train_labels)
+        test_labels = crop_scale_3d(test_labels)
 
         return train_labels, test_labels
 
