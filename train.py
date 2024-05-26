@@ -95,40 +95,68 @@ def evaluate(cfg, model, test_loader, datareader):
                 gt[:,0,0,2] = 0
             results.append(pred_3d.cpu().numpy()) # Convert to np array and append to results
     results = np.concatenate(results)
-    results = datareader.denormalize(results)
+
     _, split_id_test = datareader.get_split_id()
 
     gts = np.array(datareader.dt_dataset['test']['3d_joint_labels'])
     sources = np.array(datareader.dt_dataset['test']['source'])
+    actions = np.array(datareader.dt_dataset['test']['actions'])
 
     num_test_frames = len(sources)
     frames = np.array(range(num_test_frames))
 
     gt_clips = gts[split_id_test]
     gt_clips = gt_clips[:, :, :17, :] # Convert to h3.6m 17 keypoints
-
+    action_clips = actions[split_id_test]
     source_clips = sources[split_id_test]
     frame_clips = frames[split_id_test]
-    assert len(results) == len(gt_clips)
+    assert len(results) == len(action_clips)
 
     e1_all = np.zeros(num_test_frames)
     e2_all = np.zeros(num_test_frames)
 
+    oc = np.zeros(num_test_frames)
+    results = {}
+    results_procrustes = {}
+    action_names = sorted(set(datareader.dt_dataset['test']['action']))
+
     for i in range(len(results)):
         frame_list = frame_clips[i]
-
+        
+        action = action_clips[idx][0]
         gt = gt_clips[i]
         pred = results[i]
 
+        # Root-relative Errors
+        pred = pred - pred[:,0:1,:]
+        gt = gt - gt[:,0:1,:]
         err1 = mpjpe(pred, gt)
         err2 = p_mpjpe(pred, gt)
 
         e1_all[frame_list] += err1
         e2_all[frame_list] += err2
-    
-    e1 = np.mean(e1_all)
-    e2 = np.mean(e2_all)
+        oc[frame_list] += 1
 
+    for idx in range(num_test_frames):
+        if e1_all[idx] > 0:
+            err1 = e1_all[idx] / oc[idx]
+            err2 = e2_all[idx] / oc[idx]
+            action = actions[idx]
+            results[action].append(err1)
+            results_procrustes[action].append(err2)
+    final_result = []
+    final_result_procrustes = []
+    summary_table = prettytable.PrettyTable()
+    
+    summary_table.field_names = ['test_name'] + action_names
+    for action in action_names:
+        final_result.append(np.mean(results[action]))
+        final_result_procrustes.append(np.mean(results_procrustes[action]))
+    summary_table.add_row(['P1'] + final_result)
+    summary_table.add_row(['P2'] + final_result_procrustes)
+    print(summary_table)
+    e1 = np.mean(np.array(final_result))
+    e2 = np.mean(np.array(final_result_procrustes))
     print('Protocol #1 Error (MPJPE):', e1, 'mm')
     print('Protocol #2 Error (P-MPJPE):', e2, 'mm')
     print('----------')
