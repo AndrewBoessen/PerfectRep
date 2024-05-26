@@ -81,14 +81,7 @@ def evaluate(cfg, model, test_loader, datareader):
             N, T = gt.shape[:2]
             if torch.cuda.is_available():
                 input = input.cuda()
-            if cfg.flip:
-                flipped_input = flip_data(input)
-                pred_3d_1 = model(input)
-                pred_3d_flipped = model(flipped_input)
-                pred_3d_2 = flip_data(pred_3d_flipped) # flip back
-                pred_3d = (pred_3d_1+pred_3d_2) / 2 # Average of flipped and normal prediction
-            else:
-                pred_3d = model(input)
+            pred_3d = model(input)
             if cfg.rootrel:
                 pred_3d[:,:,0,:] = 0     # [N,T,17,3]
             else:
