@@ -113,6 +113,7 @@ def preprocess_data(data_root='data', dataset_name='fit3d', test_subjects=['s08'
     joints_2d_input_test = []  # Array of np arrays for 2d joint inputs
     rep_annotations_test = {}  # Dict holding annotation for a given source label
     source_labels_test = []  # Source of frame
+    actions_test = [] # Exercise for each frame
 
     for s in test_subjects:
         assert s in train_subj, "Test subject %s is not in dataset" % s
@@ -145,6 +146,7 @@ def preprocess_data(data_root='data', dataset_name='fit3d', test_subjects=['s08'
                     if action_annotations:
                         rep_annotations_test[source] = action_annotations
                     source_labels_test.extend([source] * joints_3d.shape[0])
+                    actions_test.extend([action] * joints_3d.shape[0])
                 else:
                     joints_3d_labels.append(joints_3d)
                     joints_2d_input.append(joints_2d)
@@ -183,7 +185,8 @@ def preprocess_data(data_root='data', dataset_name='fit3d', test_subjects=['s08'
             '2d_joint_inputs': joints_2d_input_test,
             '3d_joint_labels': joints_3d_labels_test,
             'source': source_labels_test,
-            'rep_annotations': rep_annotations_test
+            'rep_annotations': rep_annotations_test,
+            'actions': actions_test
         },
         'train': {
             '2d_joint_inputs': joints_2d_input,
