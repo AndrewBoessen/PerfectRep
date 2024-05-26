@@ -152,91 +152,79 @@ class Attention(nn.Module):
         self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias) # Linear transformation to hold params of Q,K,V
         self.proj_drop = nn.Dropout(proj_drop)
 
-        def forward(self, x, seqlen=1):
-            """
-            Compute forward pass for the multi-head attention block.
+    def forward(self, x, seqlen=1):
+        """
+        Compute forward pass for the multi-head attention block.
+        Args:
+            x (Tensor): Input tensor of shape (B, N, C), where B is the batch size, N is the number of elements, and C is the embedding dimension.
+            seqlen (int, optional): Sequence length (for temporal attention).
+        Returns:
+            Tensor: Output tensor after applying multi-head attention, with shape (B, N, C).
+        """
+        B, N, C = x.shape # Batch, Frames, Joints Embedding
+        if self.mode == AttentionType.VANILLA:
+            # Multiply input by projection matrix to get Q K V matrices
+            qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4) # (3, B, H, N, C)
+            q, k, v = qkv[0], qkv[1], qkv[2] # Extract Q K V each with shape (B, H, N, C) 
+            x = self.forward_spatial(q, k, v)
+        elif self.mode == AttentionType.TEMPORAL:
+            # Multiply input by projection matrix to get Q K V matrices
+            qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4) # (3, B, H, N, C)
+            q, k, v = qkv[0], qkv[1], qkv[2] # Extract Q K V each with shape (B, H, N, C)  
+            x = self.forward_temporal(q, k, v, seqlen=seqlen)
+        elif self.mode == AttentionType.SPATIAL:
+            # Multiply input by projection matrix to get Q K V matrices
+            qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4) # (3, B, H, N, C)
+            q, k, v = qkv[0], qkv[1], qkv[2] # Extract Q K V each with shape (B, H, N, C) 
+            x = self.forward_spatial(q, k, v)
+        else:
+            raise NotImplementedError(self.mode)
+        assert qkv.shape[-1] == C // self.num_heads
+        assert qkv.shape[2] == self.num_heads
+        x = self.proj(x) # Apply linear projection to get motion encoding
+        x = self.proj_drop(x) # Dropout
+        return x
+    
+    def forward_spatial(self, q, k, v):
+        """
+        Forward pass for spatial attention mechanism.
+        Args:
+            q (Tensor): Query tensor.
+            k (Tensor): Key tensor.
+            v (Tensor): Value tensor.
+        Returns:
+            Tensor: Output tensor after applying spatial attention.
+        """
+        B, _, N, C = q.shape
+        attn = (q @ k.transpose(-2, -1)) * self.scale # (Q * K^T) / d_K ** 0.5
+        attn = attn.softmax(dim=-1) # Softmax to get probabilty distribution
+        attn = self.attn_drop(attn) # Apply dropout
+        x = attn @ v # Multiply by values
+        x = x.transpose(1,2).reshape(B, N, C*self.num_heads) # Concat heads into result
+        return x
 
-            Args:
-                x (Tensor): Input tensor of shape (B, N, C), where B is the batch size, N is the number of elements, and C is the embedding dimension.
-                seqlen (int, optional): Sequence length (for temporal attention).
-
-            Returns:
-                Tensor: Output tensor after applying multi-head attention, with shape (B, N, C).
-            """
-            B, N, C = x.shape # Batch, Frames, Joints Embedding
-
-            if self.mode == AttentionType.VANILLA:
-                # Multiply input by projection matrix to get Q K V matrices
-                qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4) # (3, B, H, N, C)
-                q, k, v = qkv[0], qkv[1], qkv[2] # Extract Q K V each with shape (B, H, N, C) 
-                x = self.forward_spatial(q, k, v)
-            elif self.mode == AttentionType.TEMPORAL:
-                # Multiply input by projection matrix to get Q K V matrices
-                qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4) # (3, B, H, N, C)
-                q, k, v = qkv[0], qkv[1], qkv[2] # Extract Q K V each with shape (B, H, N, C)  
-                x = self.forward_temporal(q, k, v, seqlen=seqlen)
-            elif self.mode == AttentionType.SPATIAL:
-                # Multiply input by projection matrix to get Q K V matrices
-                qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4) # (3, B, H, N, C)
-                q, k, v = qkv[0], qkv[1], qkv[2] # Extract Q K V each with shape (B, H, N, C) 
-                x = self.forward_spatial(q, k, v)
-            else:
-                raise NotImplementedError(self.mode)
-
-            assert qkv.shape[-1] == C // self.num_heads
-            assert qkv.shape[2] == self.num_heads
-
-            x = self.proj(x) # Apply linear projection to get motion encoding
-            x = self.proj_drop(x) # Dropout
-            return x
-        
-        def forward_spatial(self, q, k, v):
-            """
-            Forward pass for spatial attention mechanism.
-
-            Args:
-                q (Tensor): Query tensor.
-                k (Tensor): Key tensor.
-                v (Tensor): Value tensor.
-
-            Returns:
-                Tensor: Output tensor after applying spatial attention.
-            """
-            B, _, N, C = q.shape
-            attn = (q @ k.transpose(-2, -1)) * self.scale # (Q * K^T) / d_K ** 0.5
-            attn = attn.softmax(dim=-1) # Softmax to get probabilty distribution
-            attn = self.attn_drop(attn) # Apply dropout
-
-            x = attn @ v # Multiply by values
-            x = x.transpose(1,2).reshape(B, N, C*self.num_heads) # Concat heads into result
-            return x
-
-        def forward_temporal(self, q, k, v, seqlen=8):
-            """
-            Forward pass for temporal attention mechanism.
-
-            Args:
-                q (Tensor): Query tensor.
-                k (Tensor): Key tensor.
-                v (Tensor): Value tensor.
-                seqlen (int): Sequence length of clip.
-
-            Returns:
-                Tensor: Output tensor after applying temporal attention.
-            """
-            B, _, N, C = q.shape
-            # Reshape to parallelize over the spatial dimension
-            qt = q.reshape(-1, seqlen, self.num_heads, N, C).permute(0, 2, 3, 1, 4) #(B, H, N, T, C)
-            kt = k.reshape(-1, seqlen, self.num_heads, N, C).permute(0, 2, 3, 1, 4) #(B, H, N, T, C)
-            vt = v.reshape(-1, seqlen, self.num_heads, N, C).permute(0, 2, 3, 1, 4) #(B, H, N, T, C)
-
-            attn = (qt @ kt.transpose(-2, -1)) * self.scale # (Q * K^T) / d_K ** 0.5
-            attn = attn.softmax(dim=-1)
-            attn = self.attn_drop(attn)
-
-            x = attn @ vt #(B, H, N, T, C)
-            x = x.permute(0, 3, 2, 1, 4).reshape(B, N, C*self.num_heads) # Reshape and concat heads into result
-            return x
+    def forward_temporal(self, q, k, v, seqlen=8):
+        """
+        Forward pass for temporal attention mechanism.
+        Args:
+            q (Tensor): Query tensor.
+            k (Tensor): Key tensor.
+            v (Tensor): Value tensor.
+            seqlen (int): Sequence length of clip.
+        Returns:
+            Tensor: Output tensor after applying temporal attention.
+        """
+        B, _, N, C = q.shape
+        # Reshape to parallelize over the spatial dimension
+        qt = q.reshape(-1, seqlen, self.num_heads, N, C).permute(0, 2, 3, 1, 4) #(B, H, N, T, C)
+        kt = k.reshape(-1, seqlen, self.num_heads, N, C).permute(0, 2, 3, 1, 4) #(B, H, N, T, C)
+        vt = v.reshape(-1, seqlen, self.num_heads, N, C).permute(0, 2, 3, 1, 4) #(B, H, N, T, C)
+        attn = (qt @ kt.transpose(-2, -1)) * self.scale # (Q * K^T) / d_K ** 0.5
+        attn = attn.softmax(dim=-1)
+        attn = self.attn_drop(attn)
+        x = attn @ vt #(B, H, N, T, C)
+        x = x.permute(0, 3, 2, 1, 4).reshape(B, N, C*self.num_heads) # Reshape and concat heads into result
+        return x
 
 class Block(nn.Module):
     """
@@ -296,30 +284,28 @@ class Block(nn.Module):
         if self.att_fuse:
             self.ts_attn = nn.Linear(dim*2, dim*2) # Fuse spatial and temproal attention with learned weights
 
-        def forward(self, x, seqlen=1):
-            """
-            Forward pass through the transformer block.
-
-            Args:
-                x (torch.Tensor): Input tensor of shape (batch_size, sequence_length, dim).
-                seqlen (int, optional): Sequence length. Default is 1.
-
-            Returns:
-                torch.Tensor: Output tensor of shape (batch_size, sequence_length, dim).
-            """
-            if self.st_mode=='stage_st':
-                x = x + self.drop_path(self.attn_s(self.norm1_s(x), seqlen))
-                x = x + self.drop_path(self.mlp_s(self.norm2_s(x)))
-                x = x + self.drop_path(self.attn_t(self.norm1_t(x), seqlen))
-                x = x + self.drop_path(self.mlp_t(self.norm2_t(x)))
-            elif self.st_mode=='stage_ts':
-                x = x + self.drop_path(self.attn_t(self.norm1_t(x), seqlen))
-                x = x + self.drop_path(self.mlp_t(self.norm2_t(x)))
-                x = x + self.drop_path(self.attn_s(self.norm1_s(x), seqlen))
-                x = x + self.drop_path(self.mlp_s(self.norm2_s(x)))
-            else:
-                raise NotImplementedError(self.st_mode)
-            return x
+    def forward(self, x, seqlen=1):
+        """
+        Forward pass through the transformer block.
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, sequence_length, dim).
+            seqlen (int, optional): Sequence length. Default is 1.
+        Returns:
+            torch.Tensor: Output tensor of shape (batch_size, sequence_length, dim).
+        """
+        if self.st_mode=='stage_st':
+            x = x + self.drop_path(self.attn_s(self.norm1_s(x), seqlen))
+            x = x + self.drop_path(self.mlp_s(self.norm2_s(x)))
+            x = x + self.drop_path(self.attn_t(self.norm1_t(x), seqlen))
+            x = x + self.drop_path(self.mlp_t(self.norm2_t(x)))
+        elif self.st_mode=='stage_ts':
+            x = x + self.drop_path(self.attn_t(self.norm1_t(x), seqlen))
+            x = x + self.drop_path(self.mlp_t(self.norm2_t(x)))
+            x = x + self.drop_path(self.attn_s(self.norm1_s(x), seqlen))
+            x = x + self.drop_path(self.mlp_s(self.norm2_s(x)))
+        else:
+            raise NotImplementedError(self.st_mode)
+        return x
 
 class DSTformer(nn.Module):
     """
@@ -425,63 +411,63 @@ class DSTformer(nn.Module):
                 self.ts_attn[i].weight.data.fill_(0)
                 self.ts_attn[i].bias.data.fill_(0.5)
         
-        def _init_weights(self, m):
-            """
-            Initialize the weights of the given module.
-        
-            This function initializes the weights and biases of the given module `m` based on its type:
-            - For `nn.Linear` layers, the weights are initialized using a truncated normal distribution with a standard deviation of 0.02, and biases are set to zero if they exist.
-            - For `nn.LayerNorm` layers, both weights and biases are set to one and zero respectively.
-        
-            Args:
-            m : torch.nn.Module
-                The module to initialize. This should be an instance of either `nn.Linear` or `nn.LayerNorm`.
-            """
-            if isinstance(m, nn.Linear):
-                trunc_normal_(m.weight, std=.02)
-                if isinstance(m, nn.Linear) and m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.LayerNorm):
+    def _init_weights(self, m):
+        """
+        Initialize the weights of the given module.
+    
+        This function initializes the weights and biases of the given module `m` based on its type:
+        - For `nn.Linear` layers, the weights are initialized using a truncated normal distribution with a standard deviation of 0.02, and biases are set to zero if they exist.
+        - For `nn.LayerNorm` layers, both weights and biases are set to one and zero respectively.
+    
+        Args:
+        m : torch.nn.Module
+            The module to initialize. This should be an instance of either `nn.Linear` or `nn.LayerNorm`.
+        """
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
                 nn.init.constant_(m.bias, 0)
-                nn.init.constant_(m.weight, 1.0)
-        
-        def get_classifier(self):
-            return self.head
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+    
+    def get_classifier(self):
+        return self.head
 
-        def reset_classifier(self, dim_out, global_pool=''):
-            self.dim_out = dim_out
-            self.head = nn.Linear(self.dim_feat, dim_out) if dim_out > 0 else nn.Identity()
-        
-        def forward(self, x, return_rep=False):   
-            B, F, J, C = x.shape # Batch : Frame : Joint : Embedding Space
-            x = x.reshape(-1, J, C) # Concat all batches
-            BF = x.shape[0]
-            x = self.joints_embed(x)
-            x = x + self.pos_embed # Add positional embedding
-            _, J, C = x.shape
-            x = x.reshape(-1, F, J, C) + self.temp_embed[:,:F,:,:] # Temportal encoding
-            x = x.reshape(BF, J, C)
-            x = self.pos_drop(x)
-            alphas = [] # Fuse alpha vals
-            for idx, (blk_st, blk_ts) in enumerate(zip(self.blocks_st, self.blocks_ts)):
-                x_st = blk_st(x, F)
-                x_ts = blk_ts(x, F)
-                if self.att_fuse:
-                    att = self.ts_attn[idx]
-                    alpha = torch.cat([x_st, x_ts], dim=-1)
-                    BF, J = alpha.shape[:2]
-                    alpha = att(alpha)
-                    alpha = alpha.softmax(dim=-1)
-                    x = x_st * alpha[:,:,0:1] + x_ts * alpha[:,:,1:2]
-                else:
-                    x = (x_st + x_ts)*0.5 # Assign equal weight is fuse not applied
-            x = self.norm(x)
-            x = x.reshape(B, F, J, -1)
-            x = self.pre_logits(x) # [B, F, J, dim_feat]
-            if return_rep:
-                return x
-            x = self.head(x)
+    def reset_classifier(self, dim_out, global_pool=''):
+        self.dim_out = dim_out
+        self.head = nn.Linear(self.dim_feat, dim_out) if dim_out > 0 else nn.Identity()
+   
+    def forward(self, x, return_rep=False):   
+        B, F, J, C = x.shape # Batch : Frame : Joint : Embedding Space
+        x = x.reshape(-1, J, C) # Concat all batches
+        BF = x.shape[0]
+        x = self.joints_embed(x)
+        x = x + self.pos_embed # Add positional embedding
+        _, J, C = x.shape
+        x = x.reshape(-1, F, J, C) + self.temp_embed[:,:F,:,:] # Temportal encoding
+        x = x.reshape(BF, J, C)
+        x = self.pos_drop(x)
+        alphas = [] # Fuse alpha vals
+        for idx, (blk_st, blk_ts) in enumerate(zip(self.blocks_st, self.blocks_ts)):
+            x_st = blk_st(x, F)
+            x_ts = blk_ts(x, F)
+            if self.att_fuse:
+                att = self.ts_attn[idx]
+                alpha = torch.cat([x_st, x_ts], dim=-1)
+                BF, J = alpha.shape[:2]
+                alpha = att(alpha)
+                alpha = alpha.softmax(dim=-1)
+                x = x_st * alpha[:,:,0:1] + x_ts * alpha[:,:,1:2]
+            else:
+                x = (x_st + x_ts)*0.5 # Assign equal weight is fuse not applied
+        x = self.norm(x)
+        x = x.reshape(B, F, J, -1)
+        x = self.pre_logits(x) # [B, F, J, dim_feat]
+        if return_rep:
             return x
+        x = self.head(x)
+        return x
 
-        def get_representation(self, x):
-            return self.forward(x, return_rep=True)
+    def get_representation(self, x):
+        return self.forward(x, return_rep=True)

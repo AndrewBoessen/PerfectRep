@@ -12,7 +12,7 @@ PerfectRep is a 3D pose estimation model tailored specifically for powerlifting 
 
 - Python >= 3.7
 - Pytorch
-- Cuda=11.6
+- Cuda=11.8
 - NumPy
 - Matplotlib
 - Pandas
@@ -37,7 +37,7 @@ PerfectRep is a 3D pose estimation model tailored specifically for powerlifting 
    conda create -n perfectrep python=3.7 anaconda
    conda activate perfectrep
    # Please install PyTorch according to your CUDA version.
-   conda install pytorch torchvision torchaudio pytorch-cuda=11.6 -c pytorch -c nvidia
+   conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
    pip install -r requirements.txt
    ```
 
@@ -71,24 +71,29 @@ PerfectRep is a 3D pose estimation model tailored specifically for powerlifting 
 
 ## Data Preprocessing
 
-For pretraing we use the Human3.6m data set and the Fit3D data set is used for finetuning 3D pose and classification. These data sets must be preprocessed before being used for training.
+For pretraing we use the Fit3D data set which is also used for finetuning 3D pose and classification. The data set must be preprocessed before being used for training.
 
 ### Download
 
-> Note that the preprocessed data is only intended for reproducing our results more easily. If you want to use the dataset, please register to the [Human3.6m website](http://vision.imar.ro/human3.6m/) and [Fit3D website](https://fit3d.imar.ro/home) and download the dataset in its original format.
+> Note that the preprocessed data is only intended for reproducing our results more easily. If you want to use the dataset, please register to the [Fit3D website](https://fit3d.imar.ro/home) and download the dataset in its original format.
 
 | Dataset   | Description                                                                | Size    | Download Link                                                                                               |
 | --------- | -------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------- |
-| Human3.6m | Human3.6m is a large-scale dataset for human motion capture.               | 1.03 GB | [Download Human3.6m](https://drive.google.com/file/d/1HileW1X3WXwgwueeNWzvIKGvnwlejVhZ/view?usp=drive_link) |
 | Fit3D     | Fit3D is a dataset for 3D human-interpretable models for fitness training. | 1.96 GB | [Download Fit3D](https://drive.google.com/file/d/1B8BT67Q_ZLbT638cbT3msoIYWUwYWzxz/view?usp=drive_link)     |
 
-Once downloaded unzip both files into `data/motion3d`
+1. Once downloaded unzip the files into `data/motion3d`
 
-> To processes the raw dataset downloaded from [Fit3D website](https://fit3d.imar.ro/home) place the train dataset and `fit3d_info.json`file in `data/fit3d_train/` and run
+2. Slice the data into clips (len=243, stride=81)
+```
+python process_fit3d.py
+```
+
+> To processes the raw dataset downloaded from [Fit3D website](https://fit3d.imar.ro/home) place the train dataset and `fit3d_info.json`file in `data/fit3d/` and run
 
 ```
 python compress_fit3d.py
 ```
+> Note it is still necessary to slice the data into clips after the raw data set has been preprocessed
 
 ## Documentation
 

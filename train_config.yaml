@@ -1,0 +1,49 @@
+# General
+no_eval: False
+finetune: False
+partial_train: null
+
+# Traning 
+epochs: 90
+dropout: 0.0
+learning_rate: 0.0005
+weight_decay: 0.01
+lr_decay: 0.99
+
+# Model
+maxlen: 243
+dim_feat: 512
+mlp_ratio: 2
+depth: 4
+dim_rep: 512
+num_heads: 8
+att_fuse: True
+
+# Data
+data_root: data/motion3d/
+subset_list: [Fit3D]
+dt_file: fit3d_preprocessed_data.pkl
+clip_len: 243
+data_stride: 81
+rootrel: True
+sample_stride: 1
+num_joints: 17
+no_conf: True
+gt_2d: True
+
+# Loss
+lambda_3d_velocity: 20.0
+lambda_scale: 0.5
+lambda_lv: 0.0
+lambda_lg: 0.0
+lambda_a: 0.0
+lambda_av: 0.0
+
+# Augmentation
+synthetic: True
+flip: True
+mask_ratio: 0.05
+mask_T_ratio: 0.1
+noise: True
+noise_path: params/synthetic_noise.pth
+d2c_params_path: params/d2c_params.pkl
