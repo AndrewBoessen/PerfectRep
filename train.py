@@ -73,7 +73,7 @@ def save_checkpoint(chk_path, epoch, lr, optimizer, model, min_loss):
 
 def evaluate(cfg, model, test_loader, datareader):
     print("Evaluating Model")
-    results = []
+    results_all = []
     model.eval() # Put model into evaluation mode
 
     with torch.no_grad():
@@ -93,8 +93,8 @@ def evaluate(cfg, model, test_loader, datareader):
                 pred_3d[:,:,0,:] = 0     # [N,T,17,3]
             else:
                 gt[:,0,0,2] = 0
-            results.append(pred_3d.cpu().numpy()) # Convert to np array and append to results
-    results = np.concatenate(results)
+            results_all.append(pred_3d.cpu().numpy()) # Convert to np array and append to results
+    results_all = np.concatenate(results_all)
 
     _, split_id_test = datareader.get_split_id()
 
@@ -110,7 +110,7 @@ def evaluate(cfg, model, test_loader, datareader):
     action_clips = actions[split_id_test]
     source_clips = sources[split_id_test]
     frame_clips = frames[split_id_test]
-    assert len(results) == len(action_clips)
+    assert len(results_all) == len(action_clips)
 
     e1_all = np.zeros(num_test_frames)
     e2_all = np.zeros(num_test_frames)
@@ -118,14 +118,17 @@ def evaluate(cfg, model, test_loader, datareader):
     oc = np.zeros(num_test_frames)
     results = {}
     results_procrustes = {}
-    action_names = sorted(set(datareader.dt_dataset['test']['action']))
+    action_names = sorted(set(datareader.dt_dataset['test']['actions']))
+    for action in action_names:
+        results[action] = []
+        results_procrustes[action] = []
 
-    for i in range(len(results)):
+    for i in range(len(action_clips)):
         frame_list = frame_clips[i]
         
-        action = action_clips[idx][0]
+        action = action_clips[i][0]
         gt = gt_clips[i]
-        pred = results[i]
+        pred = results_all[i]
 
         # Root-relative Errors
         pred = pred - pred[:,0:1,:]
@@ -142,6 +145,7 @@ def evaluate(cfg, model, test_loader, datareader):
             err1 = e1_all[idx] / oc[idx]
             err2 = e2_all[idx] / oc[idx]
             action = actions[idx]
+
             results[action].append(err1)
             results_procrustes[action].append(err2)
     final_result = []
@@ -166,6 +170,7 @@ def evaluate(cfg, model, test_loader, datareader):
 def train_epoch(cfg, model, train_data_loader, loss, optimzer):
     model.train() # Set model to training mode
     for i, (batch_input, batch_gt) in tqdm(enumerate(train_data_loader)):
+
         batch_size = len(batch_input)
         if torch.cuda.is_available(): # Initilize data on device
             batch_input = batch_input.cuda()
