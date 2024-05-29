@@ -8,7 +8,7 @@ import pickle
 from torch.utils.data import Dataset, DataLoader
 from src.data.augmentation import Augmenter3D
 from src.utils.tools import read_pkl
-from src.utils.data import flip_data
+from src.utils.data import flip_data, crop_scale
     
 class MotionDataset(Dataset):
     def __init__(self, args, subset_list, data_split): # data_split: train/test
@@ -60,6 +60,7 @@ class MotionDataset3D(MotionDataset):
                 raise ValueError('Training illegal.') 
         elif self.data_split=="test":                                           
             motion_2d = motion_file["data_input"]
+            motion_2d = crop_scale(motion_2d)
             if self.gt_2d:
                 motion_2d[:,:,:2] = motion_3d[:,:,:2]
                 motion_2d[:,:,2] = 1

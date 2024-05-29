@@ -81,6 +81,10 @@ class DataReaderFit3D(object):
         train_labels = crop_scale_3d(train_labels)
         test_labels = crop_scale_3d(test_labels)
 
+        # Z relative to root joint
+        train_labels[:, :, 2] = train_labels[:, :, 2] - train_labels[:, 0, 2][:, np.newaxis]
+        test_labels[:, :, 2] = test_labels[:, :, 2] - test_labels[:, 0, 2][:, np.newaxis]
+
         return train_labels, test_labels
 
     def read_ann(self):
