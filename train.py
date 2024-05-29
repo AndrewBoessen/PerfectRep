@@ -74,6 +74,7 @@ def save_checkpoint(chk_path, epoch, lr, optimizer, model, min_loss):
 def evaluate(cfg, model, test_loader, datareader):
     print("Evaluating Model")
     results_all = []
+    gts = []
     model.eval() # Put model into evaluation mode
 
     with torch.no_grad():
@@ -82,24 +83,24 @@ def evaluate(cfg, model, test_loader, datareader):
             if torch.cuda.is_available():
                 input = input.cuda()
             pred_3d = model(input)
-            if cfg.rootrel:
-                pred_3d[:,:,0,:] = 0     # [N,T,17,3]
-            else:
-                gt[:,0,0,2] = 0
+
+            gts.append(gt.cpu().numpy())
             results_all.append(pred_3d.cpu().numpy()) # Convert to np array and append to results
     results_all = np.concatenate(results_all)
+    results_all = datareader.denormalize(results_all)
+    gts = np.concatenate(gts)
+    gts = datareader.denormalize(gts)
+    gt_clips = gts
 
     _, split_id_test = datareader.get_split_id()
 
-    gts = np.array(datareader.dt_dataset['test']['3d_joint_labels'])
+    # gts = np.array(datareader.dt_dataset['test']['3d_joint_labels'])
     sources = np.array(datareader.dt_dataset['test']['source'])
     actions = np.array(datareader.dt_dataset['test']['actions'])
 
     num_test_frames = len(sources)
     frames = np.array(range(num_test_frames))
 
-    gt_clips = gts[split_id_test]
-    gt_clips = gt_clips[:, :, :17, :] # Convert to h3.6m 17 keypoints
     action_clips = actions[split_id_test]
     source_clips = sources[split_id_test]
     frame_clips = frames[split_id_test]
@@ -276,7 +277,7 @@ def train(args, cfg):
         # Load checkpoint if given
         if checkpoint:
             st = checkpoint['epoch']
-            if 'optimizer' in checkpoint and checkpoint['optimzer'] != None:
+            if 'optimizer' in checkpoint and checkpoint['optimizer'] != None:
                 optimizer.load_state_dict(checkpoint['optimizer'])
             else:
                 warnings.warn("Checkpoint does not contain an optimzer. The optimzer will be reset")

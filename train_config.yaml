@@ -14,7 +14,7 @@ lr_decay: 0.99
 maxlen: 243
 dim_feat: 512
 mlp_ratio: 2
-depth: 4
+depth: 5
 dim_rep: 512
 num_heads: 8
 att_fuse: True
