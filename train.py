@@ -31,15 +31,15 @@ from src.model.DSTformer import DSTformer
 def parse_args():
     parser = argparse.ArgumentParser(
         prog='PerfectRep Train',
-        description='A script for pretraining the 3D pose estimation model. This trains the model on the h3.6m and optional fit3d dataset'
+        description='A script for pretraining the 3D pose estimation model. This trains the model on the fit3d dataset'
     )
     # Add Arguments for Data and Hyperparameters
     parser.add_argument('--config', default='train_config.yaml', type=str, metavar='FILENAME', help='config file')
     parser.add_argument('-s', '--save_path', default='save', type=str, metavar='PATH', help='path to store logs and checkpoint saves')
     parser.add_argument('-d', '--data_path', default='data/motion3d', type=str, metavar='PATH', help='path to training data directory')
     parser.add_argument('-r', '--random_seed', default=0, type=int, help='seed used to generate random numbers')
-    parser.add_argument('-c', '--checkpoint', default=None, type=str, metavar='FILENAME', help='filename of checkpoint binary to load (e.g. model.pt file)')
-    parser.add_argument('-v', '--evaluate', default=False, action='store_true', help='evaluate accuracy of given checkpoint')
+    parser.add_argument('-c', '--checkpoint', default=None, type=str, metavar='FILENAME', help='filename of checkpoint binary to load (e.g. best_epoch.bin file)')
+    parser.add_argument('-v', '--evaluate', default=False, action='store_true', help='Don\'t train, only evaluate accuracy of given checkpoint')
     parser.add_argument('-b', '--batch_size', default=3, type=int, help='batch size for training')
     parser.add_argument('-e', '--epochs', default=10, type=int, help='number of epochs to train for')
     args = parser.parse_args()
@@ -258,7 +258,7 @@ def train(args, cfg):
         if os.path.exists(checkpoint_file):
             print('Loading Checkpoint', checkpoint_file)
             checkpoint = torch.load(checkpoint_file, map_location=lambda storage, loc: storage)
-            model_backbone.load_state_dict(checkpoint['model_pos'], strict=True)
+            model_backbone.load_state_dict(checkpoint['model'], strict=True)
         else:
             warnings.warn("Checkpoint file does not exist: %s" % checkpoint_file)
             checkpoint = None
