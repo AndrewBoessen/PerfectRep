@@ -40,6 +40,7 @@ def parse_args():
     parser.add_argument('-r', '--random_seed', default=0, type=int, help='seed used to generate random numbers')
     parser.add_argument('-c', '--checkpoint', default=None, type=str, metavar='FILENAME', help='filename of checkpoint binary to load (e.g. best_epoch.bin file)')
     parser.add_argument('-v', '--evaluate', default=False, action='store_true', help='Don\'t train, only evaluate accuracy of given checkpoint')
+    parser.add_argument('-l', '--selection', default='best_epoch.bin', type=str, metavar='FILENAME', help='checkpoint to finetune (file name)')
     parser.add_argument('-b', '--batch_size', default=3, type=int, help='batch size for training')
     parser.add_argument('-e', '--epochs', default=10, type=int, help='number of epochs to train for')
     args = parser.parse_args()
@@ -253,17 +254,27 @@ def train(args, cfg):
         model_backbone = nn.DataParallel(model_backbone)
         model_backbone = model_backbone.cuda()
     
-    if args.checkpoint and args.checkpoint != None:
-        checkpoint_file = os.path.join(args.save_path, args.checkpoint)
+    if cfg.finetune:
+        checkpoint_file = os.path.join(args.save_path, args.selection)
         if os.path.exists(checkpoint_file):
-            print('Loading Checkpoint', checkpoint_file)
+            print('Loading checkpoint to finetune', checkpoint_file)
             checkpoint = torch.load(checkpoint_file, map_location=lambda storage, loc: storage)
             model_backbone.load_state_dict(checkpoint['model'], strict=True)
         else:
             warnings.warn("Checkpoint file does not exist: %s" % checkpoint_file)
-            checkpoint = None
+            checkpoint = None   
     else:
-        checkpoint = None
+        if args.checkpoint and args.checkpoint != None:
+            checkpoint_file = os.path.join(args.save_path, args.checkpoint)
+            if os.path.exists(checkpoint_file):
+                print('Loading Checkpoint', checkpoint_file)
+                checkpoint = torch.load(checkpoint_file, map_location=lambda storage, loc: storage)
+                model_backbone.load_state_dict(checkpoint['model'], strict=True)
+            else:
+                warnings.warn("Checkpoint file does not exist: %s" % checkpoint_file)
+                checkpoint = None
+        else:
+            checkpoint = None
     model = model_backbone
 
     if not args.evaluate: # Not in evaluation mode
@@ -289,7 +300,7 @@ def train(args, cfg):
         if cfg.mask or mfg.noise:
             cfg.aug = Augmenter2D(cfg) # Data Augmentation: flip and add noise
         
-        for epoch in range(st, cfg.epochs): # Start training
+        for epoch in range(st, args.epochs or cfg.epochs): # Start training
             print("Training Epoch %d" % (epoch + 1))
             start_time = time()
             # Reset losses for current epoch
