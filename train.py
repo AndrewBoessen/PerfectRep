@@ -297,7 +297,7 @@ def train(args, cfg):
                 min_loss = checkpoint['min_loss'] # Upadte min loss from checkpoint
 
         cfg.mask = (cfg.mask_ratio > 0 and cfg.mask_T_ratio > 0)
-        if cfg.mask or mfg.noise:
+        if cfg.mask or cfg.noise:
             cfg.aug = Augmenter2D(cfg) # Data Augmentation: flip and add noise
         
         for epoch in range(st, args.epochs or cfg.epochs): # Start training
