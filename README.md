@@ -48,10 +48,16 @@ PerfectRep is a 3D pose estimation model tailored specifically for powerlifting 
 2. Train the model using the provided training script:
 
    ```bash
-   python train.py --dataset /path/to/dataset --epochs 100 --batch_size 32
+   python train.py --data_path /path/to/dataset --epochs 100 --batch_size 32
    ```
 
 3. Monitor the training progress and adjust hyperparameters and config file as necessary.
+
+## Finetune 3D Pose
+
+As we utilize 2D-to-3D lifting as the pretext task, we simply reuse the whole pretrained network. During finetuning, the input 2D skeletons are estimated from videos without extra masks or noises.
+
+See [3D Pose Estimation](./docs/3D-pose.md) for training instructions and more info
 
 ## Usage Examples
 
