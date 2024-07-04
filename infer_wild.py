@@ -6,11 +6,11 @@ import imageio
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from lib.utils.tools import *
-from lib.utils.learning import *
-from lib.utils.utils_data import flip_data
-from lib.utils.vismo import render_and_save
-from lib.data.dataset_wild import WildDetDataset
+from src.utils.tools import *
+from src.utils.learning import *
+from src.utils.utils_data import flip_data
+from src.utils.vismo import render_and_save
+from src.data.dataset_wild import WildDetDataset
 
 from mmpose.api import MMPoseInferencer
 
