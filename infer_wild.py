@@ -10,6 +10,9 @@ from lib.utils.tools import *
 from lib.utils.learning import *
 from lib.utils.utils_data import flip_data
 from lib.utils.vismo import render_and_save
+from lib.data.dataset_wild import WildDetDataset
+
+from mmpose.api import MMPoseInferencer
 
 from matplotlib import pyplot as plt
 from gluoncv import model_zoo, data, utils
