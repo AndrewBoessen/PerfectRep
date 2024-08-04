@@ -59,7 +59,9 @@ As we utilize 2D-to-3D lifting as the pretext task, we simply reuse the whole pr
 
 See [3D Pose Estimation](./docs/3D-pose.md) for training instructions and more info
 
-## Usage Examples
+## In-the-wild Inference
+
+![InferenceDemo](./assets/lift.gif)
 
 1. Perform inference on a single image:
 
