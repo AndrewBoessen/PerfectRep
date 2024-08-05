@@ -137,18 +137,20 @@ class DataReaderFit3D(object):
         assert any(action in key for key in rep_annotations.keys()
                    ), "Action is not defined in the dataset"
 
-        train_data = self.read_2d()  # train_data (N, 25, 3)
+        train_data, test_data = self.read_2d()  # train_data (N, 25, 3)
         train_data = self.fit3d_to_h36m(train_data)  # (N, 17, 3)
-        train_labels = self.read_3d()  # train_labels (N, 25, 3)
-        train_labels = self.fit3d_to_h36m(train_labels)  # (N, 17, 3)
-        source = self.dt_dataset['train']['source']
+        test_data = self.fit3d_to_h36m(test_data) # (N, 17, 3)
 
-        actions_ids = np.where(action in source)[0]
+        train_source = self.dt_dataset['train']['source']
+        test_source = self.dt_dataset['test']['source']
 
-        actions_frames_2d = train_data[actions_ids]
-        actions_frames_3d = train_labels[actions_ids]
+        train_actions_ids = np.where(np.char.find(train_source, action) != -1)[0]
+        test_actions_ids = np.where(np.char.find(test_source, action) != -1)[0]
+        
+        train_actions_frames = train_data[train_actions_ids]
+        test_actions_frames = test_data[test_actions_ids]
 
-        return actions_frames_2d, actions_frames_3d
+        return train_actions_frames, test_actions_frames
 
     def get_sliced_data(self):
         """
