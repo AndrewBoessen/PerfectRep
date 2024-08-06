@@ -43,7 +43,13 @@ for action in ACTIONS:
     one_hot_encode[ACTIONS.index(action)] = 1
     print(one_hot_encode)
 
-    train_labels = np.full(shape=train_action.shape, )
+    C,F,_,_ = train_action.shape
+    train_labels = np.full(shape=(C,F,len(ACTIONS)), fill_value=one_hot_encode)
+    C,F,_,_ = test_action.shape
+    test_labels = np.full(shape=(C,F,len(ACTIONS)), fill_value=one_hot_encode)
+
+    assert len(train_action) == len(train_labels)
+    assert len(test_action) == len(test_labels)
 
     save_clips(f'train/{action}', root, train_action, train_labels)
     save_clips(f'test/{action}', root, test_action, test_labels)
