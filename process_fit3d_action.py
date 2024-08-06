@@ -16,6 +16,7 @@ train2d, test2d = datareader.read_2d()
 print(train2d.shape)
 print(test2d.shape)
 
-train_action, test_action = datareader.get_action_sliced_data("squat")
-print(train_action.shape)
-print(test_action.shape)
+for action in ACTIONS:
+    train_action, test_action = datareader.get_action_sliced_data(action=action)
+    print(train_action.shape)
+    print(test_action.shape)
