@@ -5,23 +5,46 @@ import random
 import copy
 from torch.utils.data import Dataset, DataLoader
 
-class ActionClassifierDataset(Dataset):
-    def __init__(self, datareader, n_frames=243, scale_range=[1,1], check_split=True):
-        annotations = datareader.read_ann() # Annotations for rep frames
-        actions = annotations.keys() # Set of all action names
-
-        motions = []
-        labels = []
-
-        for action in actions:
-            actions_frames, _ = datareader.get_action_sliced_data(action=action)
-            motions.append(actions_frames)
-            labels.append(action)
-        self.motions = np.array(motions)
-        self.labels = np.array(labels)
+class ActionDataset(Dataset):
+    def __init__(self, args, subset_list, data_split, action_names):
+        np.random.seed(0)
+        self.data_root = args.data_root
+        self.subset_list = subset_list
+        self.data_split = data_split
+        self.action_names = action_names
+        file_list_all = []
+        for subset in self.subset_list:
+            for action in self.action_names:
+                data_path = os.path.join(self.data_root, subset, self.data_split, action)
+                motion_list = sorted(os.listdir(data_path))
+                for i in motion_list:
+                    file_list_all.append(os.path.join(data_path, i))
+            self.file_list = file_list_all
 
     def __len__(self):
-        return len(self.motions) # Number of samples across all actions
-    
-    def __getitem__(self, idx):
-        raise NotImplementedError
+        return len(self.file_list)
+
+    def __getitem__(self):
+        return NotImplementedError
+
+class PowerliftingActionDataset(ActionDataset):
+    def __init__(self, args, subset_list, data_split):
+        action_names = ["squat", "deadlift", "pushup"]
+        super(PowerliftingActionDataset, self).__init__(args, subset_list, data_split, action_names)
+
+    def __getitem__(self, index):
+        file_path = self.file_list[index]
+        motion_file = read_pkl(file_path)
+        action_class = motion_file["data_label"]
+        if self.data_split == "train":
+            action_keypoints = motion_file["data_input"]
+            action_keypoints[:,:,2] = 1 # confidence is 1
+            if self.flip and random.random() > 0.5:
+                action_keypoints = flip_data(action_keypoints)
+        elif self.data_split == "test":
+            action_keypoints = motion_file["data_input"]
+            action_keypoints = crop_scale(action_keypoints)
+            action_keypoints[:,:,2] = 1
+        else:
+            raise ValueError('Data split unknown.')
+        return torch.FloatTensor(action_keypoints), torch.FloatTensor(action_class)
