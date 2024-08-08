@@ -16,11 +16,10 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader
 
-from lib.utils.tools import *
-from lib.utils.learning import *
-from lib.model.loss import *
-from lib.data.dataset_action import NTURGBD
-from lib.model.model_action import ActionNet
+from src.utils.tools import *
+from src.utils.learning import *
+from src.model.loss import *
+from src.data.dataset_action import ActionDataset, PowerliftingActionDataset
 
 random.seed(0)
 np.random.seed(0)
