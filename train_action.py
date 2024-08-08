@@ -17,7 +17,7 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader
 
 from src.utils.tools import *
-from src.utils.learning import *
+from src.utils.training import *
 from src.model.loss import *
 from src.data.dataset_action import ActionDataset, PowerliftingActionDataset
 
