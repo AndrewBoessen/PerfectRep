@@ -27,13 +27,17 @@ torch.manual_seed(0)
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default="configs/pretrain.yaml", help="Path to the config file.")
+    parser.add_argument("--config", type=str, default="action_config.yaml", help="Path to the config file.")
+    parser.add_argument('-s', '--save_path', default='save', type=str, metavar='PATH', help='path to store logs and checkpoint saves')
+    parser.add_argument('-d', '--data_path', default='data/motion3d', type=str, metavar='PATH', help='path to training data directory')
     parser.add_argument('-c', '--checkpoint', default='checkpoint', type=str, metavar='PATH', help='checkpoint directory')
     parser.add_argument('-p', '--pretrained', default='checkpoint', type=str, metavar='PATH', help='pretrained checkpoint directory')
     parser.add_argument('-r', '--resume', default='', type=str, metavar='FILENAME', help='checkpoint to resume (file name)')
     parser.add_argument('-e', '--evaluate', default='', type=str, metavar='FILENAME', help='checkpoint to evaluate (file name)')
     parser.add_argument('-freq', '--print_freq', default=100)
     parser.add_argument('-ms', '--selection', default='latest_epoch.bin', type=str, metavar='FILENAME', help='checkpoint to finetune (file name)')
+    parser.add_argument('-b', '--batch_size', default=3, type=int, help='batch size for training')
+    parser.add_argument('-e', '--epochs', default=10, type=int, help='number of epochs to train for')
     opts = parser.parse_args()
     return opts
 
@@ -106,7 +110,7 @@ def train_with_config(args, opts):
     print('INFO: Trainable parameter count:', model_params)
     print('Loading dataset...')
     trainloader_params = {
-          'batch_size': args.batch_size,
+          'batch_size': opts.batch_size,
           'shuffle': True,
           'num_workers': 8,
           'pin_memory': True,
@@ -114,19 +118,19 @@ def train_with_config(args, opts):
           'persistent_workers': True
     }
     testloader_params = {
-          'batch_size': args.batch_size,
+          'batch_size': opts.batch_size,
           'shuffle': False,
           'num_workers': 8,
           'pin_memory': True,
           'prefetch_factor': 4,
           'persistent_workers': True
     }
-    data_path = 'data/action/%s.pkl' % args.dataset
-    ntu60_xsub_train = NTURGBD(data_path=data_path, data_split=args.data_split+'_train', n_frames=args.clip_len, random_move=args.random_move, scale_range=args.scale_range_train)
-    ntu60_xsub_val = NTURGBD(data_path=data_path, data_split=args.data_split+'_val', n_frames=args.clip_len, random_move=False, scale_range=args.scale_range_test)
+    data_path = opts.data_path
+    actions_train = PowerliftingActionDataset(args, cfg.dataset, 'train')
+    actions_test = PowerliftingActionDataset(args, cfg.dataset, 'test')
 
-    train_loader = DataLoader(ntu60_xsub_train, **trainloader_params)
-    test_loader = DataLoader(ntu60_xsub_val, **testloader_params)
+    train_loader = DataLoader(actions_train, **trainloader_params)
+    test_loader = DataLoader(actions_test, **testloader_params)
         
     chk_filename = os.path.join(opts.checkpoint, "latest_epoch.bin")
     if os.path.exists(chk_filename):
@@ -158,7 +162,7 @@ def train_with_config(args, opts):
             if 'best_acc' in checkpoint and checkpoint['best_acc'] is not None:
                 best_acc = checkpoint['best_acc']
         # Training
-        for epoch in range(st, args.epochs):
+        for epoch in range(st, opts.epochs):
             print('Training epoch %d.' % epoch)
             losses_train = AverageMeter()
             top1 = AverageMeter()
