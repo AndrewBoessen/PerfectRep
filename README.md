@@ -82,7 +82,7 @@ python process_fit3d_action.py
 Train the classifier using provided training script
 
 ```
-python train_action.py --data_path /path/to/dataset --checkpoint best_epoch.bin --epochs 100 --batch_size 32
+python train_action.py --data_path /path/to/dataset --checkpoint /checkpoint/dir --pretrained /pretrain/model/dir --selection latest_epoch.bin --epochs 100 --batch_size 32
 ```
 
 ## Usage Examples
