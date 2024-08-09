@@ -82,7 +82,9 @@ def train_with_config(args, opts):
         if e.errno != errno.EEXIST:
             raise RuntimeError('Unable to create checkpoint directory:', opts.checkpoint)
     train_writer = tensorboardX.SummaryWriter(os.path.join(opts.checkpoint, "logs"))
-    model_backbone = load_backbone(args)
+    model_backbone = DSTformer(dim_in=3, dim_out=3, dim_feat=cfg.dim_feat, dim_rep=cfg.dim_rep, 
+                                depth=cfg.depth, num_heads=cfg.num_heads, mlp_ratio=cfg.mlp_ratio, norm_layer=partial(nn.LayerNorm, eps=1e-6), 
+                                maxlen=cfg.maxlen, num_joints=cfg.num_joints)
     if args.finetune:
         if opts.resume or opts.evaluate:
             pass
