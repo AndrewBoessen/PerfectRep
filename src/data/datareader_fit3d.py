@@ -123,6 +123,30 @@ class DataReaderFit3D(object):
 
         return self.split_id_train, self.split_id_test
 
+    def get_action_split_id(self, action):
+        """
+        Gets the split IDs based on frame labels for training and testing for the given action
+        
+        Parameters:
+            action: Name of action to select
+
+        Returns:
+            tuple: A tuple containing the split IDs for training and testing data,
+                or None for one or both if the corresponding video lists are missing.
+        """
+        # Extract video lists from the dataset
+        # Labels for frames of train set (subject, action, camera). shpae: (N,)
+        vid_list_train = self.dt_dataset['train']['source']
+        vid_list_test = self.dt_dataset['test']['source']
+
+        action_list_train = vid_list_train[np.char.find(vid_list_train, action) >= 0][::self.sample_stride]
+        action_list_test = vid_list_test[np.char.find(vid_list_test, action) >= 0][::self.sample_stride]
+
+        action_split_id_train = split_clips(action_list_train, self.n_frames, data_stride=self.data_stride_train)
+        action_split_id_test = split_clips(action_list_test, self.n_frames, data_stride=self.data_stride_train)
+
+        return action_split_id_train, action_split_id_test
+
     def get_action_sliced_data(self, action=None):
         """
         Get sliced clips for a given action. Used for classification finetuning
@@ -137,18 +161,23 @@ class DataReaderFit3D(object):
         assert any(action in key for key in rep_annotations.keys()
                    ), "Action is not defined in the dataset"
 
-        train_data = self.read_2d()  # train_data (N, 25, 3)
+        train_data, test_data = self.read_2d()  # train_data (N, 25, 3)
         train_data = self.fit3d_to_h36m(train_data)  # (N, 17, 3)
-        train_labels = self.read_3d()  # train_labels (N, 25, 3)
-        train_labels = self.fit3d_to_h36m(train_labels)  # (N, 17, 3)
-        source = self.dt_dataset['train']['source']
+        test_data = self.fit3d_to_h36m(test_data) # (N, 17, 3)
 
-        actions_ids = np.where(action in source)[0]
+        train_source = self.dt_dataset['train']['source']
+        test_source = self.dt_dataset['test']['source']
 
-        actions_frames_2d = train_data[actions_ids]
-        actions_frames_3d = train_labels[actions_ids]
+        train_actions_ids = np.where(np.char.find(train_source, action) != -1)[0] # get ids of action in train set
+        test_actions_ids = np.where(np.char.find(test_source, action) != -1)[0] # get ids of actions in test set
+        
+        train_actions_frames = train_data[train_actions_ids] # get all frames with action
+        test_actions_frames = test_data[test_actions_ids] # get all frames with action
 
-        return actions_frames_2d, actions_frames_3d
+        split_id_train, split_id_test = self.get_action_split_id(action=action) # split data into clips
+        train_data, test_data = train_actions_frames[split_id_train], test_actions_frames[split_id_test]  
+
+        return train_data, test_data
 
     def get_sliced_data(self):
         """

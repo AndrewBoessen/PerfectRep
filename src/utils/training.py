@@ -1,5 +1,6 @@
 import collections
 import warnings
+import torch
 
 class AverageMeter(object):
     '''
@@ -52,3 +53,57 @@ def load_checkpoint_weights(model, checkpoint):
 
     print('Loaded Checkpoint Weights', len(aligned_layers))
     return model
+
+def load_pretrained_weights(model, checkpoint):
+    """Load pretrianed weights to model
+    Incompatible layers (unmatched in name or size) will be ignored
+    Args:
+    - model (nn.Module): network model, which must not be nn.DataParallel
+    - weight_path (str): path to pretrained weights
+    """
+    import collections
+    if 'state_dict' in checkpoint:
+        state_dict = checkpoint['state_dict']
+    else:
+        state_dict = checkpoint
+    model_dict = model.state_dict()
+    new_state_dict = collections.OrderedDict()
+    matched_layers, discarded_layers = [], []
+    for k, v in state_dict.items():
+        # If the pretrained state_dict was saved as nn.DataParallel,
+        # keys would contain "module.", which should be ignored.
+        if k.startswith('module.'):
+            k = k[7:]
+        if k in model_dict and model_dict[k].size() == v.size():
+            new_state_dict[k] = v
+            matched_layers.append(k)
+        else:
+            discarded_layers.append(k)
+    model_dict.update(new_state_dict)
+    model.load_state_dict(model_dict, strict=True)
+    print('load_weight', len(matched_layers))
+    return model
+
+def partial_train_layers(model, partial_list):
+    """Train partial layers of a given model."""
+    for name, p in model.named_parameters():
+        p.requires_grad = False
+        for trainable in partial_list:
+            if trainable in name:
+                p.requires_grad = True
+                break
+    return model
+
+def accuracy(output, target, topk=(1,)):
+    """Computes the accuracy over the k top predictions for the specified values of k"""
+    with torch.no_grad():
+        maxk = max(topk)
+        batch_size = target.size(0)
+        _, pred = output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(target.view(1, -1).expand_as(pred))
+        res = []
+        for k in topk:
+            correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
+            res.append(correct_k.mul_(100.0 / batch_size))
+        return res
