@@ -45,7 +45,6 @@ def validate(test_loader, model, criterion):
     batch_time = AverageMeter()
     losses = AverageMeter()
     top1 = AverageMeter()
-    top5 = AverageMeter()
     with torch.no_grad():
         end = time.time()
         for idx, (batch_input, batch_gt) in tqdm(enumerate(test_loader)):
@@ -58,9 +57,8 @@ def validate(test_loader, model, criterion):
 
             # update metric
             losses.update(loss.item(), batch_size)
-            acc1, acc5 = accuracy(output, batch_gt, topk=(1, 5))
+            acc1 = accuracy(output, batch_gt, topk=(1,))
             top1.update(acc1[0], batch_size)
-            top5.update(acc5[0], batch_size)
 
             # measure elapsed time
             batch_time.update(time.time() - end)
@@ -70,11 +68,10 @@ def validate(test_loader, model, criterion):
                 print('Test: [{0}/{1}]\t'
                       'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                       'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                      'Acc@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-                      'Acc@5 {top5.val:.3f} ({top5.avg:.3f})\t'.format(
+                      'Acc@1 {top1.val:.3f} ({top1.avg:.3f})\t'.format(
                        idx, len(test_loader), batch_time=batch_time,
-                       loss=losses, top1=top1, top5=top5))
-    return losses.avg, top1.avg, top5.avg
+                       loss=losses, top1=top1))
+    return losses.avg, top1.avg
 
 
 def train_with_config(args, opts):
@@ -165,7 +162,6 @@ def train_with_config(args, opts):
             print('Training epoch %d.' % epoch)
             losses_train = AverageMeter()
             top1 = AverageMeter()
-            top5 = AverageMeter()
             batch_time = AverageMeter()
             data_time = AverageMeter()
             model.train()
@@ -181,9 +177,8 @@ def train_with_config(args, opts):
                 optimizer.zero_grad()
                 loss_train = criterion(output, batch_gt)
                 losses_train.update(loss_train.item(), batch_size)
-                acc1, acc5 = accuracy(output, batch_gt, topk=(1, 5))
+                acc1 = accuracy(output, batch_gt, topk=(1,))
                 top1.update(acc1[0], batch_size)
-                top5.update(acc5[0], batch_size)
                 loss_train.backward()
                 optimizer.step()    
                 batch_time.update(time.time() - end)
@@ -198,14 +193,12 @@ def train_with_config(args, opts):
                        data_time=data_time, loss=losses_train, top1=top1))
                 sys.stdout.flush()
                 
-            test_loss, test_top1, test_top5 = validate(test_loader, model, criterion)
+            test_loss, test_top1 = validate(test_loader, model, criterion)
                 
             train_writer.add_scalar('train_loss', losses_train.avg, epoch + 1)
             train_writer.add_scalar('train_top1', top1.avg, epoch + 1)
-            train_writer.add_scalar('train_top5', top5.avg, epoch + 1)
             train_writer.add_scalar('test_loss', test_loss, epoch + 1)
             train_writer.add_scalar('test_top1', test_top1, epoch + 1)
-            train_writer.add_scalar('test_top5', test_top5, epoch + 1)
             
             scheduler.step()
 
@@ -234,10 +227,9 @@ def train_with_config(args, opts):
                 }, best_chk_path)
 
     if opts.evaluate:
-        test_loss, test_top1, test_top5 = validate(test_loader, model, criterion)
+        test_loss, test_top1 = validate(test_loader, model, criterion)
         print('Loss {loss:.4f} \t'
-              'Acc@1 {top1:.3f} \t'
-              'Acc@5 {top5:.3f} \t'.format(loss=test_loss, top1=test_top1, top5=test_top5))
+              'Acc@1 {top1:.3f} \t'.format(loss=test_loss, top1=test_top1))
 
 if __name__ == "__main__":
     opts = parse_args()
