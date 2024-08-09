@@ -59,6 +59,32 @@ As we utilize 2D-to-3D lifting as the pretext task, we simply reuse the whole pr
 
 See [3D Pose Estimation](./docs/3D-pose.md) for training instructions and more info
 
+## Train Action Classifier
+
+Action classifier for powerlifting. Classify clip as squat, deadlift, or bench press.
+
+### Pretrain Backbone
+
+The action classifier head uses DSTFormer as a backbone for getting motion represenation. The pretrain backbone can be trained from scratch. See [Training Instruction](#training-instructions). Or download pretrain backbone parameters [here](https://drive.google.com/file/d/1Al49MhmvG3IG2ASWcb6Mx8mymArmb7Wz/view?usp=drive_link).
+
+### Preprocess Data
+
+1. Slice data into clips (len=243, stride=81)
+
+```
+python process_fit3d_action.py
+```
+
+2. Verify data files in `data/action/Fit3D`
+
+### Train
+
+Train the classifier using provided training script
+
+```
+python train_action.py --data_path /path/to/dataset --checkpoint best_epoch.bin --epochs 100 --batch_size 32
+```
+
 ## Usage Examples
 
 1. Perform inference on a single image:
@@ -81,13 +107,14 @@ For pretraing we use the Fit3D data set which is also used for finetuning 3D pos
 
 > Note that the preprocessed data is only intended for reproducing our results more easily. If you want to use the dataset, please register to the [Fit3D website](https://fit3d.imar.ro/home) and download the dataset in its original format.
 
-| Dataset   | Description                                                                | Size    | Download Link                                                                                               |
-| --------- | -------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------- |
-| Fit3D     | Fit3D is a dataset for 3D human-interpretable models for fitness training. | 1.96 GB | [Download Fit3D](https://drive.google.com/file/d/1B8BT67Q_ZLbT638cbT3msoIYWUwYWzxz/view?usp=drive_link)     |
+| Dataset | Description                                                                | Size    | Download Link                                                                                           |
+| ------- | -------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| Fit3D   | Fit3D is a dataset for 3D human-interpretable models for fitness training. | 1.96 GB | [Download Fit3D](https://drive.google.com/file/d/1B8BT67Q_ZLbT638cbT3msoIYWUwYWzxz/view?usp=drive_link) |
 
 1. Once downloaded unzip the files into `data/motion3d`
 
 2. Slice the data into clips (len=243, stride=81)
+
 ```
 python process_fit3d.py
 ```
@@ -97,6 +124,7 @@ python process_fit3d.py
 ```
 python compress_fit3d.py
 ```
+
 > Note it is still necessary to slice the data into clips after the raw data set has been preprocessed
 
 ## Documentation
