@@ -59,31 +59,11 @@ As we utilize 2D-to-3D lifting as the pretext task, we simply reuse the whole pr
 
 See [3D Pose Estimation](./docs/3D-pose.md) for training instructions and more info
 
-## Train Action Classifier
+## Finetune Action Classifier
 
 Action classifier for powerlifting. Classify clip as squat, deadlift, or bench press.
 
-### Pretrain Backbone
-
-The action classifier head uses DSTFormer as a backbone for getting motion represenation. The pretrain backbone can be trained from scratch. See [Training Instruction](#training-instructions). Or download pretrain backbone parameters [here](https://drive.google.com/file/d/1Al49MhmvG3IG2ASWcb6Mx8mymArmb7Wz/view?usp=drive_link).
-
-### Preprocess Data
-
-1. Slice data into clips (len=243, stride=81)
-
-```
-python process_fit3d_action.py
-```
-
-2. Verify data files in `data/action/Fit3D`
-
-### Train
-
-Train the classifier using provided training script
-
-```
-python train_action.py --data_path /path/to/dataset --checkpoint /checkpoint/dir --pretrained /pretrain/model/dir --selection latest_epoch.bin --epochs 100 --batch_size 32
-```
+See [Action Classifier](./docs/action.md) for training instructions and more info
 
 ## Usage Examples
 
@@ -133,6 +113,7 @@ python compress_fit3d.py
 
 - [Pretrain Model](./docs/pretrain.md)
 - [3D Pose Estimation](./docs/3D-pose.md)
+- [Action Classifier](./docs/action.md)
 - [Form Analysis](./docs/form-analysis.md)
 - [Data Set](./docs/dataset.md)
 - [References](./docs/reference.md)
