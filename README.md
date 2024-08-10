@@ -95,13 +95,13 @@ For pretraing we use the Fit3D data set which is also used for finetuning 3D pos
 
 2. Slice the data into clips (len=243, stride=81)
 
-```
+```bash
 python process_fit3d.py
 ```
 
 > To processes the raw dataset downloaded from [Fit3D website](https://fit3d.imar.ro/home) place the train dataset and `fit3d_info.json`file in `data/fit3d/` and run
 
-```
+```bash
 python compress_fit3d.py
 ```
 

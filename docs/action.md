@@ -12,7 +12,7 @@ The action classifier head uses DSTFormer as a backbone for getting motion repre
 
 2. Slice data into clips (len=243, stride=81)
 
-```
+```bash
 python process_fit3d_action.py
 ```
 
@@ -22,7 +22,7 @@ python process_fit3d_action.py
 
 Train the classifier using provided training script
 
-```
+```bash
 python train_action.py \
 --data_path /path/to/dataset \
 --checkpoint /checkpoint/dir \
