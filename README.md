@@ -65,18 +65,30 @@ Action classifier for powerlifting. Classify clip as squat, deadlift, or bench p
 
 See [Action Classifier](./docs/action.md) for training instructions and more info
 
-## Usage Examples
+## In-the-wild Inference
+
+![InferenceDemo](./assets/lift.gif)
+
+### 2D Keypoints
+
+Please use [AlphaPose](https://github.com/MVIG-SJTU/AlphaPose#quick-start) to extract the 2D keypoints for your video first. We use the *Fast Pose* model trained on *Halpe* dataset ([Link](https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/MODEL_ZOO.md#halpe-dataset-26-keypoints)).
+
+### Checkpoint
+
+Download model checkpoint [best_epoch.bin](https://drive.google.com/file/d/1Al49MhmvG3IG2ASWcb6Mx8mymArmb7Wz/view?usp=drive_link) or train model from scratch
+
+### 3D Pose
 
 1. Perform inference on a single image:
 
    ```bash
-   python infer.py --image /path/to/image.jpg
+   python infer_wild.py --checkpoint /path/to/checkpoint --json_path keypoint_json --image /path/to/image.jpg --out_path /output/path/
    ```
 
 2. Process a video to analyze multiple frames:
 
    ```bash
-   python infer.py --video /path/to/video.mp4
+   python infer_wild.py --checkpoint /path/to/checkpoint --json_path keypoint_json --video /path/to/video.mp4 --out_path /output/path/
    ```
 
 ## Data Preprocessing
