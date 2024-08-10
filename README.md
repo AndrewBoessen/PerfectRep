@@ -59,6 +59,12 @@ As we utilize 2D-to-3D lifting as the pretext task, we simply reuse the whole pr
 
 See [3D Pose Estimation](./docs/3D-pose.md) for training instructions and more info
 
+## Finetune Action Classifier
+
+Action classifier for powerlifting. Classify clip as squat, deadlift, or bench press.
+
+See [Action Classifier](./docs/action.md) for training instructions and more info
+
 ## In-the-wild Inference
 
 ![InferenceDemo](./assets/lift.gif)
@@ -93,22 +99,24 @@ For pretraing we use the Fit3D data set which is also used for finetuning 3D pos
 
 > Note that the preprocessed data is only intended for reproducing our results more easily. If you want to use the dataset, please register to the [Fit3D website](https://fit3d.imar.ro/home) and download the dataset in its original format.
 
-| Dataset   | Description                                                                | Size    | Download Link                                                                                               |
-| --------- | -------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------- |
-| Fit3D     | Fit3D is a dataset for 3D human-interpretable models for fitness training. | 1.96 GB | [Download Fit3D](https://drive.google.com/file/d/1B8BT67Q_ZLbT638cbT3msoIYWUwYWzxz/view?usp=drive_link)     |
+| Dataset | Description                                                                | Size    | Download Link                                                                                           |
+| ------- | -------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| Fit3D   | Fit3D is a dataset for 3D human-interpretable models for fitness training. | 1.96 GB | [Download Fit3D](https://drive.google.com/file/d/1B8BT67Q_ZLbT638cbT3msoIYWUwYWzxz/view?usp=drive_link) |
 
 1. Once downloaded unzip the files into `data/motion3d`
 
 2. Slice the data into clips (len=243, stride=81)
-```
+
+```bash
 python process_fit3d.py
 ```
 
 > To processes the raw dataset downloaded from [Fit3D website](https://fit3d.imar.ro/home) place the train dataset and `fit3d_info.json`file in `data/fit3d/` and run
 
-```
+```bash
 python compress_fit3d.py
 ```
+
 > Note it is still necessary to slice the data into clips after the raw data set has been preprocessed
 
 ## Documentation
@@ -117,6 +125,7 @@ python compress_fit3d.py
 
 - [Pretrain Model](./docs/pretrain.md)
 - [3D Pose Estimation](./docs/3D-pose.md)
+- [Action Classifier](./docs/action.md)
 - [Form Analysis](./docs/form-analysis.md)
 - [Data Set](./docs/dataset.md)
 - [References](./docs/reference.md)

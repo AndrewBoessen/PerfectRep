@@ -1,6 +1,6 @@
 # 3D Pose Extimation
 
-![3DPose](../assets/output_wild.gif)
+![3DPose](../assets/squat.gif)
 
 As we utilize 2D-to-3D lifting as the pretext task, we simply reuse the whole pretrained network. During finetuning, the input 2D skeletons are estimated from videos without extra masks or noises.
 
@@ -23,5 +23,3 @@ Finetune from pretrained checkpoint. The pretrained checkpont can be downloaded 
 ```bash
 python train.py --config ft_3d_pose_config.yaml --selection best_epoch.bin --epochs 30 --batch_size 4
 ```
-
-
