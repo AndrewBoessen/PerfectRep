@@ -1,6 +1,7 @@
 # 3D Pose Extimation
 
 ![3DPose](../assets/squat.gif)
+![Inference](../assets/squat-inference.gif)
 
 As we utilize 2D-to-3D lifting as the pretext task, we simply reuse the whole pretrained network. During finetuning, the input 2D skeletons are estimated from videos without extra masks or noises.
 
