@@ -68,10 +68,11 @@ See [Action Classifier](./docs/action.md) for training instructions and more inf
 ## In-the-wild Inference
 
 ![InferenceDemo](./assets/lift.gif)
+![3D Pose Inference Video](./assets/inference_vid.gif)
 
 ### 2D Keypoints
 
-Please use [AlphaPose](https://github.com/MVIG-SJTU/AlphaPose#quick-start) to extract the 2D keypoints for your video first. We use the *Fast Pose* model trained on *Halpe* dataset ([Link](https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/MODEL_ZOO.md#halpe-dataset-26-keypoints)).
+Use [ViTPose](https://arxiv.org/abs/2204.12484) to extract 2d skeleton keypoints from video or image. Use COCO keypoint format and save frame keypoints in a json file. See [easy_ViTPose](https://github.com/JunkyByte/easy_ViTPose) for instructions on ViTPose inference.
 
 ### Checkpoint
 
