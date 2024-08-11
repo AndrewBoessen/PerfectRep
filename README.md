@@ -68,6 +68,7 @@ See [Action Classifier](./docs/action.md) for training instructions and more inf
 ## In-the-wild Inference
 
 ![InferenceDemo](./assets/lift.gif)
+![3D Pose Inference Video](./assets/inference_vid.gif)
 
 ### 2D Keypoints
 

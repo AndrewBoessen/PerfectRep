@@ -75,10 +75,7 @@ with torch.no_grad():
         if torch.cuda.is_available():
             batch_input = batch_input.cuda()
         predicted_3d_pos = model_pos(batch_input)
-        if cfg.rootrel:
-            predicted_3d_pos[:,:,0,:]=0                    # [N,T,17,3]
-        else:
-            predicted_3d_pos[:,0,0,2]=0
+        predicted_3d_pos[:,0,0,2]=0
         results_all.append(predicted_3d_pos.cpu().numpy())
 
 results_all = np.hstack(results_all)

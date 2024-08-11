@@ -61,6 +61,7 @@ def read_input(json_path, vid_size, scale_range, focus):
     with open(json_path, "r") as read_file:
         results = json.load(read_file)
     kpts = np.array(results['keypoints']).reshape([-1,17,3])
+    kpts[..., :2] = kpts[..., :2][..., ::-1]
     kpts_all = np.array(kpts)
     kpts_all = coco2h36m(kpts_all)
     if vid_size:
