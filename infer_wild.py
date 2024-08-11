@@ -6,11 +6,13 @@ import imageio
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from functools import partial
 from src.utils.tools import *
-from src.utils.learning import *
-from src.utils.utils_data import flip_data
+from src.utils.training import *
+from src.utils.data import flip_data
 from src.utils.vismo import render_and_save
 from src.data.dataset_wild import WildDetDataset
+from src.model.DSTformer import DSTformer
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -18,13 +20,14 @@ def parse_args():
         description='Perform in-the-wild inference on a single image or a whole video'
     )
     parser.add_argument('--config', default='train_config.yaml', type=str, metavar='FILENAME', help='config file')
-    parser.add_argument('-c', '--checkpoint', type=PATH, help='checkpoint file location')
+    parser.add_argument('-c', '--checkpoint', type=str, help='checkpoint file location')
     parser.add_argument('-v', '--video', type=str, help='video path')
     parser.add_argument('-i', '--image', type=str, help='image path')
     parser.add_argument('-j', '--json_path', type=str, help='alphapose detection result json path')
     parser.add_argument('-o', '--out_path', type=str, help='output path')
     parser.add_argument('--focus', type=int, default=None, help='target person id')
     parser.add_argument('--pixel', action='store_true', help='align with pixle coordinates')
+    return parser.parse_args()
 
 args = parse_args()
 cfg = get_config(args.config)
@@ -38,7 +41,7 @@ if torch.cuda.is_available():
 
 print('Loading checkpoint', args.checkpoint)
 checkpoint = torch.load(args.checkpoint, map_location=lambda storage, loc: storage)
-model_backbone.load_state_dict(checkpoint['model_pos'], strict=True)
+model_backbone.load_state_dict(checkpoint['model'], strict=True)
 model_pos = model_backbone
 model_pos.eval()
 testloader_params = {
@@ -71,23 +74,11 @@ with torch.no_grad():
         N, T = batch_input.shape[:2]
         if torch.cuda.is_available():
             batch_input = batch_input.cuda()
-        if args.no_conf:
-            batch_input = batch_input[:, :, :, :2]
-        if args.flip:    
-            batch_input_flip = flip_data(batch_input)
-            predicted_3d_pos_1 = model_pos(batch_input)
-            predicted_3d_pos_flip = model_pos(batch_input_flip)
-            predicted_3d_pos_2 = flip_data(predicted_3d_pos_flip) # Flip back
-            predicted_3d_pos = (predicted_3d_pos_1 + predicted_3d_pos_2) / 2.0
-        else:
-            predicted_3d_pos = model_pos(batch_input)
-        if args.rootrel:
+        predicted_3d_pos = model_pos(batch_input)
+        if cfg.rootrel:
             predicted_3d_pos[:,:,0,:]=0                    # [N,T,17,3]
         else:
             predicted_3d_pos[:,0,0,2]=0
-            pass
-        if args.gt_2d:
-            predicted_3d_pos[...,:2] = batch_input[...,:2]
         results_all.append(predicted_3d_pos.cpu().numpy())
 
 results_all = np.hstack(results_all)
