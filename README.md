@@ -84,13 +84,23 @@ Download model checkpoint [best_epoch.bin](https://drive.google.com/file/d/1Al49
 1. Perform inference on a single image:
 
    ```bash
-   python infer_wild.py --checkpoint /path/to/checkpoint --json_path keypoint_json --image /path/to/image.jpg --out_path /output/path/
+   python infer_wild.py\
+   --config train_config.yaml\
+   --checkpoint /path/to/checkpoint\
+   --json_path keypoint_json\
+   --image /path/to/image.jpg\
+   --out_path /output/path/
    ```
 
 2. Process a video to analyze multiple frames:
 
    ```bash
-   python infer_wild.py --checkpoint /path/to/checkpoint --json_path keypoint_json --video /path/to/video.mp4 --out_path /output/path/
+   python infer_wild.py\
+   --config train_config.yaml\
+   --checkpoint /path/to/checkpoint\
+   --json_path keypoint_json\
+   --video /path/to/video.mp4\
+   --out_path /output/path/
    ```
 
 ## Data Preprocessing
