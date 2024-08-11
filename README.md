@@ -68,7 +68,6 @@ See [Action Classifier](./docs/action.md) for training instructions and more inf
 ## In-the-wild Inference
 
 ![InferenceDemo](./assets/lift.gif)
-![3D Pose Inference Video](./assets/inference_vid.gif)
 
 ### 2D Keypoints
 
@@ -79,6 +78,8 @@ Use [ViTPose](https://arxiv.org/abs/2204.12484) to extract 2d skeleton keypoints
 Download model checkpoint [best_epoch.bin](https://drive.google.com/file/d/1Al49MhmvG3IG2ASWcb6Mx8mymArmb7Wz/view?usp=drive_link) or train model from scratch
 
 ### 3D Pose
+
+![3D Pose Inference Video](./assets/inference_vid.gif)
 
 1. Perform inference on a single image:
 
