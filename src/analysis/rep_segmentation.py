@@ -15,14 +15,13 @@ def init(p: np.array) -> Tuple(int, int):
 
     Returns:
         Tuple(int, int)
-        Initial estimates tau^* and s^*
-    '''
+        Initial estimates tau^* and s^*  '''
     N = p.shape[0] # number of frames
     best_tau = 0
     best_s = 0
     best_corr = -np.inf
     for s in range(N//2):
-        correlations = [auto_curr(N, s, tau, p) for tau in range(1, N-2*s)]
+        correlations = [auto_corr(N, s, tau, p) for tau in range(1, N-2*s)]
         local_max = argrelxtrema(np.array(correlations), np.greater)[0]
 
         if len(local_max) > 0:
@@ -60,6 +59,6 @@ def auto_corr(N: int, s: int, tau: int, p: np.array) -> float:
         Auto-correlation
     '''
     p_strip = p[s:-s] # strip s frames from font and back
-    affinity = -mpjpe(p_strip[:-tau], p_stgip[tau:]) # calculate affinity for each from in reps
+    affinity = -mpjpe(p_strip[:-tau], p_strip[tau:]) # calculate affinity for each from in reps
     return np.mean(affinity) # average affinity over all valid frames
 
