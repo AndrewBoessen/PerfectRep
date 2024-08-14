@@ -36,7 +36,7 @@ def init(p: np.array) -> Tuple(int, int):
 
     return best_tau, best_s
 
-def auto_corr(N: int, s: int, tau: int, p: np.array) -> float
+def auto_corr(N: int, s: int, tau: int, p: np.array) -> float:
     '''
     Auto-correlation of rep segments.
 
