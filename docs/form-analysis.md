@@ -8,8 +8,6 @@ To calculate the score, we compare these values to a predefined range of 'perfec
 
 ## Skeleton Keypoints:
 
-![H36M](../assets/H36M.png)
-
 _We use the Human3.6m 17 keypoints_
 
 | Joint Number | Joint Name     |
