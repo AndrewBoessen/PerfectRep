@@ -62,3 +62,9 @@ def auto_corr(N: int, s: int, tau: int, p: np.array) -> float:
     affinity = -mpjpe(p_strip[:-tau], p_strip[tau:]) # calculate affinity for each from in reps
     return np.mean(affinity) # average affinity over all valid frames
 
+def seq_aff(t_start: int, i: int, j: int, tau: int, p: np.array) -> float:
+    t_i = t_start + tau * i
+    t_j = t_start + tau * j
+    return np.mean(mpjpe(p[t_i: t_i+tau], p[t_j: t_j+tau]))
+
+
