@@ -32,6 +32,41 @@ _We use the Human3.6m 17 keypoints_
 | 15           | Right Elbow    |
 | 16           | Right Wrist    |
 
+## Rep Segmentation
+
+We split a video of mutliple repeititons of the same exercise into individual clips containing a single repetition.
+
+These clips are used later for analysis and tracking form across a whole set of reps.
+
+![repetition segmentation algo](../assets/rep_seg.png)
+
+The algorithm we used is derived from [AIFit](https://openaccess.thecvf.com/content/CVPR2021/papers/Fieraru_AIFit_Automatic_3D_Human-Interpretable_Feedback_Models_for_Fitness_Training_CVPR_2021_paper.pdf). We first achieve an estimate using a fixed clip length and optimize to find individual clip start and stop frames.
+
+### Initialization
+
+To obtain an initial estimate of the segmentation, we follow these steps:
+
+1. Assume a fixed-period pose signal:
+   $T_{init} = T(t_{start}, \tau) = \{T_i | t_i = t_{start} + (i - 1)\tau\}$
+
+   - $\tau$: period
+   - $t_{start}$: starting point of repetitions
+
+2. Define affinity between two 3D poses:
+   $A(p_m, p_n)$ = negative mean per joint position error (MPJPE) between $p_m$ and $p_n$
+
+3. Determine initial period estimate $\tau^*$ using auto-correlation:
+   $R_{PP}(\tau, s) = \frac{1}{N - 2s - \tau} \sum_{t=s}^{N-s-\tau} A(p_t, p_{t+\tau})$
+
+   - $s$: signal shrinkage at both ends to account for noise
+   - $N$: total number of poses
+
+4. Iterate over $s$ and $\tau$ to find $\tau^*$:
+   - Select smallest $\tau$ where $R_{PP}(\tau, s)$ reaches a local maximum
+   - Corresponding $s$ becomes $s^*$
+
+$\tau^*$ represents the period that maximizes the auto-correlation of the signal, accounting for noise outside repetitions.
+
 ## Calculations:
 
 | Metric   | Formula                                                                                                                                                       |
