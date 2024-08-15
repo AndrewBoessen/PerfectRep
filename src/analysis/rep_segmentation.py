@@ -62,22 +62,60 @@ def auto_corr(N: int, s: int, tau: int, p: np.array) -> float:
     affinity = -mpjpe(p_strip[:-tau], p_strip[tau:]) # calculate affinity for each from in reps
     return np.mean(affinity) # average affinity over all valid frames
 
-def avg_aff(tau: int, s: int, p: np.array) -> float:
-    best_corr = -np.inf
-    best_t_start = 0
-    num_reps = len(p) - 2 * s // tau
-    for t_start in range(len(p) - 2 * s):
-        affinity = 0
-        for i in range(num_reps):
-            for i in range(num_reps):
-                affinity += seq_aff(t_start, i, j, tau, p)
-        if affinity > best_corr:
-            best_corr = affinity
-            best_t_start = t_start
+def avg_aff(k_min: int, t_start: int, tau: int, p: np.array) -> float:
+    '''
+    Compute average affinity of reps based on t start.
 
-    return best_t_start
+    Parameters:
+        k_min: int
+        Minimum number of reps. k >= k_min
+
+        t_start: int
+        Frame number where reps start
+
+        tau: int
+        Number of frames in each rep
+
+        p: np.array
+        Poses. 2d keypoints (N, J, 2)
+
+    Returns:
+        float
+        average affinity score
+    '''
+    affinity = 0
+    for i in range(k_min):
+        for j in range(k_min):
+            affinity += seq_aff(t_start, i, j, tau, p)
+
+    return affinity / k_min ** 2
 
 def seq_aff(t_start: int, i: int, j: int, tau: int, p: np.array) -> float:
+    '''
+    Compute affinity between two repetitions.
+
+    This uses mpjpe to calcualte correlation between reps i and j.
+
+    Parameters:
+        t_start: int
+        Frame number of first rep
+
+        i: int
+        First repetition number
+
+        j: int
+        Second repetition number
+
+        tau: int
+        Number of frames in a single rep
+
+        p: np.array
+        Poses. 2d keypoints (N, J, 2)
+
+    Returns:
+        float
+        affinity between reps i and j
+    '''
     t_i = t_start + tau * i
     t_j = t_start + tau * j
 
