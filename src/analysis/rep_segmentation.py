@@ -35,6 +35,19 @@ def init(p: np.array) -> Tuple(int, int):
 
     return best_tau, best_s
 
+def find_start(k_min: int, s: int, tau: int, p: np.array) -> int:
+    best_corr = -np.inf
+    best_t_start = s
+    for t_start in range(len(p) - 2 * s):
+        corr = avg_aff(k_min, t_start, tau, p)
+
+        if corr > best_corr:
+            best_corr = corr
+            best_t_start = t_start
+    
+    return best_t_start
+
+
 def auto_corr(N: int, s: int, tau: int, p: np.array) -> float:
     '''
     Auto-correlation of rep segments.
