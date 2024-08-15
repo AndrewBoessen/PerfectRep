@@ -21,7 +21,7 @@ def init(p: np.array) -> Tuple(int, int):
     best_s = 0
     best_corr = -np.inf
     for s in range(N//2):
-        correlations = [auto_corr(N, s, tau, p) for tau in range(1, N-2*s)]
+        correlations = [auto_corr(s, tau, p) for tau in range(1, N-2*s)]
         local_max = argrelxtrema(np.array(correlations), np.greater)[0]
 
         if len(local_max) > 0:
@@ -44,20 +44,17 @@ def find_start(k_min: int, s: int, tau: int, p: np.array) -> int:
         if corr > best_corr:
             best_corr = corr
             best_t_start = t_start
-    
+
     return best_t_start
 
 
-def auto_corr(N: int, s: int, tau: int, p: np.array) -> float:
+def auto_corr(s: int, tau: int, p: np.array) -> float:
     '''
     Auto-correlation of rep segments.
 
     This is the auto-correlation based on parameters tau and s on poses p.
 
     Parameters:
-        N: int
-        Number of total frames
-
         s: int
         Number of frames to strip from front and back
 
@@ -133,5 +130,3 @@ def seq_aff(t_start: int, i: int, j: int, tau: int, p: np.array) -> float:
     t_j = t_start + tau * j
 
     return np.mean(mpjpe(p[t_i: t_i+tau], p[t_j: t_j+tau]))
-
-
