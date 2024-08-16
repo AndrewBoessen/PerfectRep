@@ -65,6 +65,25 @@ To obtain an initial estimate of the segmentation, we follow these steps:
 
 $\tau^*$ represents the period that maximizes the auto-correlation of the signal, accounting for noise outside repetitions.
 
+### Finding the Start of the First Repetition
+
+After estimating the period $\tau^*$, we search for the beginning of the first repetition $t_{start}$ by maximizing the average affinity $A_{avg}$ of $T(t_{start}, \tau^*)$:
+
+$A_{avg}(T) = \frac{1}{k_{min}^2} \sum_{i=1}^{k_{min}} \sum_{j=1}^{k_{min}} A_{seq}(T_i, T_j)$
+
+where:
+
+$A_{seq}(T_i, T_j) = \frac{1}{\tau^*} \sum_{l=1}^{\tau^*} A(p_{t_i+l}, p_{t_j+l})$
+
+- $A_{seq}(T_i, T_j)$ computes the similarity between two repetitions of equal period $\tau^*$ (intervals $T_i$ and $T_j$).
+- $A_{avg}(T)$ averages similarities between all possible pairs of intervals, representing a global affinity of the repetition segmentation $T$.
+- At this stage, $T$ is parameterized only by $t_{start}$, since $\tau^*$ was found in the previous step.
+
+We select $t^*_{start}$ as the smallest value for which $A_{avg}(T(t_{start}, \tau^*))$ has a local maximum. This approach:
+
+1. Provides the highest similarity between repetitions.
+2. Uses the smallest such maximum to prevent solutions like the beginning of the 2nd/3rd/etc. interval, which are also local maxima.
+
 ## Calculations:
 
 | Metric   | Formula                                                                                                                                                       |
