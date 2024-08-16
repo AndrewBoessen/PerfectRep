@@ -15,7 +15,8 @@ def init(p: np.array) -> Tuple(int, int):
 
     Returns:
         Tuple(int, int)
-        Initial estimates tau^* and s^*  '''
+        Initial estimates tau^* and s^*
+    '''
     N = p.shape[0] # number of frames
     best_tau = 0
     best_s = 0
@@ -36,10 +37,32 @@ def init(p: np.array) -> Tuple(int, int):
     return best_tau, best_s
 
 def find_start(k_min: int, s: int, tau: int, p: np.array) -> int:
-    best_corr = -np.inf
+    '''
+    Find start frame of the series of rep. t_start
+
+    This optimzes the correlation parametrized by t_start
+
+    Parameters:
+        k_min: int
+        Minimum number of repetitions
+
+        s: int
+        Initial approximation of start and end noise
+
+        tau: int
+        Initial approximation of length of repetitions
+
+        p: numpy array
+        Poses. 2d keypoints. (N, J, 2)
+
+    Returns:
+        int
+        optimized t_start value
+    '''
+    best_corr = -np.inf # top correlation value
     best_t_start = s
     for t_start in range(len(p) - 2 * s):
-        corr = avg_aff(k_min, t_start, tau, p)
+        corr = avg_aff(k_min, t_start, tau, p) # average affintity across all k_min reps
 
         if corr > best_corr:
             best_corr = corr
@@ -96,7 +119,7 @@ def avg_aff(k_min: int, t_start: int, tau: int, p: np.array) -> float:
     affinity = 0
     for i in range(k_min):
         for j in range(k_min):
-            affinity += seq_aff(t_start, i, j, tau, p)
+            affinity += seq_aff(t_start, i, j, tau, p) # affinity between reps i and j
 
     return affinity / k_min ** 2
 
