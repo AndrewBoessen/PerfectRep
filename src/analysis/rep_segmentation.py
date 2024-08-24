@@ -62,7 +62,7 @@ def find_start(k_min: int, s: int, tau: int, p: np.ndarray) -> int:
     '''
     best_corr = -np.inf # top correlation value
     best_t_start = s
-    for t_start in range(len(p) - 2 * s):
+    for t_start in range(2 * s):
         corr = avg_aff(k_min, t_start, tau, p) # average affintity across all k_min reps
 
         if corr > best_corr:
@@ -176,3 +176,7 @@ def optim_avg_aff(k_min: int, T: List[int], n_s: int, p: np.ndarray):
             T_j = list(range(T[j], T[j+1]))
             affinity += optim_seq_aff(T_i, T_j, n_s, p)
     return affinity / k_min ** 2
+
+def optimize(num_reps: int, k_min: int, delta: int, t_start: int, tau: int, n_s: int, p: np.ndarray) -> List[int]:
+    T = list(range(t_start, num_reps * tau, tau))
+    for t_i in T[:k_min]:
