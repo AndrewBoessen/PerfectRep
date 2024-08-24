@@ -164,3 +164,15 @@ def uniform_sample(T_i: List[int], n_s: int, p: np.ndarray):
         result.append(p_hat)
         x += step
     return result
+
+def optim_seq_aff(T_i: List[int], T_j: List[int], n_s: int, p: np.ndarray) -> float:
+    return np.mean(mpjpe(uniform_sample(T_i, n_s, p), uniform_sample(T_j, n_s, p)))
+
+def optim_avg_aff(k_min: int, T: List[int], n_s: int, p: np.ndarray):
+    affinity = 0.0
+    for i in range(k_min):
+        for j in range(k_min):
+            T_i = list(range(T[i], T[i+1]))
+            T_j = list(range(T[j], T[j+1]))
+            affinity += optim_seq_aff(T_i, T_j, n_s, p)
+    return affinity / k_min ** 2
