@@ -1,182 +1,84 @@
-import math
 import numpy as np
-from typing import Tuple, List
-from scipy.signal import argrelxtrema
-from src.utils.loss import mpjpe
+from scipy.optimize import minimize
+from scipy.interpolate import interp1d
 
-def init(p: np.ndarray) -> Tuple[int, int]:
-    '''
-    Initialize estimate of rep segments.
+def mpjpe(pose1, pose2):
+    """Calculate Mean Per Joint Position Error (MPJPE) between two poses."""
+    return np.mean(np.linalg.norm(pose1 - pose2, axis=1))
 
-    This assumes a constant tau value for rep length and a single s value to strip noise from font and back
+def auto_correlation(poses, tau, s):
+    """Calculate auto-correlation of the pose signal."""
+    N = len(poses)
+    return np.mean([mpjpe(poses[t], poses[t+tau]) for t in range(s, N-s-tau)])
 
-    Parameters:
-        p: numpy array
-        Poses to split into repetitions. Pixel coord 2d keypoints
+def affinity(pose1, pose2):
+    """Calculate affinity between two poses."""
+    return -mpjpe(pose1, pose2)
 
-    Returns:
-        Tuple(int, int)
-        Initial estimates tau^* and s^*
-    '''
-    N = p.shape[0] # number of frames
-    best_tau = 0
-    best_s = 0
-    best_corr = -np.inf
-    for s in range(N//2):
-        correlations = [auto_corr(s, tau, p) for tau in range(1, N-2*s)]
-        local_max = argrelxtrema(np.array(correlations), np.greater)[0]
+def uniform_sample(interval, poses, nS):
+    """Uniformly sample nS frames from the given interval."""
+    start, end = interval
+    if start == end:
+        return [poses[int(start)]] * nS
+    t = np.linspace(start, end, nS)
+    interpolator = interp1d(np.arange(len(poses)), poses, axis=0, kind='linear')
+    return interpolator(t)
 
-        if len(local_max) > 0:
-            tau = local_max[0] + 1 # tau starts at 1
-            corr = correlations[tau - 1] # get correlation
+def seq_affinity(interval1, interval2, poses, nS):
+    """Calculate sequence affinity between two intervals."""
+    samples1 = uniform_sample(interval1, poses, nS)
+    samples2 = uniform_sample(interval2, poses, nS)
+    return np.mean([affinity(s1, s2) for s1, s2 in zip(samples1, samples2)])
 
+def avg_affinity(intervals, poses, nS):
+    """Calculate average affinity for all interval pairs."""
+    k = len(intervals)
+    affinities = [seq_affinity(intervals[i], intervals[j], poses, nS)
+                  for i in range(k) for j in range(i+1, k)]
+    return np.mean(affinities)
+
+def initialize_segmentation(poses, kmin):
+    """Initialize segmentation assuming fixed period."""
+    N = len(poses)
+    best_tau, best_s, best_corr = None, None, -np.inf
+    
+    for s in range(N // 4):  # Adjust range as needed
+        for tau in range(1, (N - 2*s) // kmin):
+            corr = auto_correlation(poses, tau, s)
             if corr > best_corr:
-                best_corr = corr
-                best_tau = tau
-                best_s = s
+                best_tau, best_s, best_corr = tau, s, corr
 
-    return best_tau, best_s
+    best_start, best_avg = None, -np.inf
+    for start in range(best_s, N - best_s - kmin*best_tau):
+        intervals = [(start + i*best_tau, start + (i+1)*best_tau) for i in range(kmin)]
+        avg = avg_affinity(intervals, poses, nS=10)  # nS can be adjusted
+        if avg > best_avg:
+            best_start, best_avg = start, avg
 
-def find_start(k_min: int, s: int, tau: int, p: np.ndarray) -> int:
-    '''
-    Find start frame of the series of rep. t_start
+    return [(best_start + i*best_tau, best_start + (i+1)*best_tau) for i in range(kmin)]
 
-    This optimzes the correlation parametrized by t_start
+def optimize_segmentation(initial_intervals, poses, kmin):
+    """Optimize segmentation using constrained continuous optimization."""
+    N = len(poses)
+    nS = 10  # Can be adjusted
 
-    Parameters:
-        k_min: int
-        Minimum number of repetitions
+    def objective(x):
+        intervals = [(x[i], x[i+1]) for i in range(kmin)]
+        return -avg_affinity(intervals, poses, nS)
 
-        s: int
-        Initial approximation of start and end noise
+    def constraints(x):
+        return np.array([x[i+1] - x[i] - 1 for i in range(kmin)])  # Ensure intervals are at least 1 frame long
 
-        tau: int
-        Initial approximation of length of repetitions
+    x0 = [interval[0] for interval in initial_intervals] + [initial_intervals[-1][1]]
+    bounds = [(0, N-1) for _ in range(kmin+1)]
+    
+    result = minimize(objective, x0, method='SLSQP', bounds=bounds, constraints={'type': 'ineq', 'fun': constraints})
+    
+    optimized_intervals = [(result.x[i], result.x[i+1]) for i in range(kmin)]
+    return optimized_intervals
 
-        p: numpy array
-        Poses. 2d keypoints. (N, J, 2)
-
-    Returns:
-        int
-        optimized t_start value
-    '''
-    best_corr = -np.inf # top correlation value
-    best_t_start = s
-    for t_start in range(2 * s):
-        corr = avg_aff(k_min, t_start, tau, p) # average affintity across all k_min reps
-
-        if corr > best_corr:
-            best_corr = corr
-            best_t_start = t_start
-
-    return best_t_start
-
-
-def auto_corr(s: int, tau: int, p: np.ndarray) -> float:
-    '''
-    Auto-correlation of rep segments.
-
-    This is the auto-correlation based on parameters tau and s on poses p.
-
-    Parameters:
-        s: int
-        Number of frames to strip from front and back
-
-        tau: int
-        Length of single repetition. Measuered in frames
-
-        p: np.ndarray
-        Poses to split. 2d keypoints. (N, J, 2)
-
-    Returns:
-        float
-        Auto-correlation
-    '''
-    p_strip = p[s:-s] # strip s frames from font and back
-    affinity = -mpjpe(p_strip[:-tau], p_strip[tau:]) # calculate affinity for each from in reps
-    return np.mean(affinity) # average affinity over all valid frames
-
-def avg_aff(k_min: int, t_start: int, tau: int, p: np.ndarray) -> float:
-    '''
-    Compute average affinity of reps based on t start.
-
-    Parameters:
-        k_min: int
-        Minimum number of reps. k >= k_min
-
-        t_start: int
-        Frame number where reps start
-
-        tau: int
-        Number of frames in each rep
-
-        p: np.ndarray
-        Poses. 2d keypoints (N, J, 2)
-
-    Returns:
-        float
-        average affinity score
-    '''
-    affinity = 0.0
-    for i in range(k_min):
-        for j in range(k_min):
-            affinity += seq_aff(t_start, i, j, tau, p) # affinity between reps i and j
-
-    return affinity / k_min ** 2
-
-def seq_aff(t_start: int, i: int, j: int, tau: int, p: np.ndarray) -> float:
-    '''
-    Compute affinity between two repetitions.
-
-    This uses mpjpe to calcualte correlation between reps i and j.
-
-    Parameters:
-        t_start: int
-        Frame number of first rep
-
-        i: int
-        First repetition number
-
-        j: int
-        Second repetition number
-
-        tau: int
-        Number of frames in a single rep
-
-        p: np.ndarray
-        Poses. 2d keypoints (N, J, 2)
-
-    Returns:
-        float
-        affinity between reps i and j
-    '''
-    t_i = t_start + tau * i
-    t_j = t_start + tau * j
-
-    return np.mean(mpjpe(p[t_i: t_i+tau], p[t_j: t_j+tau]))
-
-def uniform_sample(T_i: List[int], n_s: int, p: np.ndarray):
-    result = []
-    step = (len(T_i) - 1) / (n_s - 1)
-    x = T_i[0]
-    while x <= T_i[-1]:
-        p_hat = p[math.floor(x)] * (1 - (x - math.floor(x))) + p[math.ceil(x)] * (x - math.floor(x))
-        result.append(p_hat)
-        x += step
-    return result
-
-def optim_seq_aff(T_i: List[int], T_j: List[int], n_s: int, p: np.ndarray) -> float:
-    return np.mean(mpjpe(uniform_sample(T_i, n_s, p), uniform_sample(T_j, n_s, p)))
-
-def optim_avg_aff(k_min: int, T: List[int], n_s: int, p: np.ndarray):
-    affinity = 0.0
-    for i in range(k_min):
-        for j in range(k_min):
-            T_i = list(range(T[i], T[i+1]))
-            T_j = list(range(T[j], T[j+1]))
-            affinity += optim_seq_aff(T_i, T_j, n_s, p)
-    return affinity / k_min ** 2
-
-def optimize(num_reps: int, k_min: int, delta: int, t_start: int, tau: int, n_s: int, p: np.ndarray) -> List[int]:
-    T = list(range(t_start, num_reps * tau, tau))
-    for t_i in T[:k_min]:
+def segment_repetitions(poses, kmin):
+    """Segment repetitions of 2D human poses."""
+    initial_intervals = initialize_segmentation(poses, kmin)
+    optimized_intervals = optimize_segmentation(initial_intervals, poses, kmin)
+    return optimized_intervals
